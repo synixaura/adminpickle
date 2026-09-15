@@ -24,10 +24,16 @@ def create_app():
     # Initialize Database Connection
     sqla.init_app(app)
 
-    # Configure upload folder for profile pictures and assets
-    upload_dir = os.path.join(static_dir, 'uploads')
-    os.makedirs(upload_dir, exist_ok=True)
-    app.config['UPLOAD_FOLDER'] = upload_dir
+    # Configure upload folder for profile pictures and assets (read-only safe on Vercel)
+    if os.environ.get('VERCEL'):
+        app.config['UPLOAD_FOLDER'] = '/tmp'
+    else:
+        upload_dir = os.path.join(static_dir, 'uploads')
+        try:
+            os.makedirs(upload_dir, exist_ok=True)
+        except OSError:
+            pass
+        app.config['UPLOAD_FOLDER'] = upload_dir
     app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5 MB max upload
 
     # Initialize Flask-Login
