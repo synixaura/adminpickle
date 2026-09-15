@@ -23,7 +23,9 @@ def google_login():
     if next_page and next_page.startswith('/') and not next_page.startswith('//'):
         session['next_url'] = next_page
 
-    redirect_uri = url_for('auth.google_callback', _external=True)
+    # Ensure scheme is https when running on Vercel/production or behind SSL proxy
+    scheme = 'https' if (request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https' or current_app.config.get('IS_PRODUCTION')) else 'http'
+    redirect_uri = url_for('auth.google_callback', _external=True, _scheme=scheme)
     return oauth.google.authorize_redirect(redirect_uri, prompt='select_account')
 
 @auth_bp.route('/login/google/callback')

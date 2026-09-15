@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from flask import Flask, render_template
 from flask_login import LoginManager
 from authlib.integrations.flask_client import OAuth
+from werkzeug.middleware.proxy_fix import ProxyFix
 from backend.config import Config
 from backend.models.mock_db import db, sqla
 
@@ -20,6 +21,9 @@ def create_app():
 
     app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
     app.config.from_object(Config)
+
+    # Trust Vercel reverse proxy headers (ensures request.is_secure is True and https scheme is preserved)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
     # Initialize Database Connection
     sqla.init_app(app)
