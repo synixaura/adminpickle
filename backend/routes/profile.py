@@ -91,19 +91,14 @@ def upload_avatar():
             if len(file_bytes) > 5 * 1024 * 1024:
                 return jsonify({"success": False, "message": "File size exceeds 5MB limit."}), 400
 
-            # 1. Try uploading to Supabase Storage (preferred for Vercel/Cloud)
+            # 1. Try uploading to Supabase Storage (if configured)
             avatar_url = upload_to_supabase_storage(file_bytes, unique_filename, mimetype)
 
-            # 2. Fallback to local storage if Supabase Storage is not configured
+            # 2. Reliable Cloud Fallback: Convert to Base64 Data URL (saved directly in database)
             if not avatar_url:
-                try:
-                    upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
-                    with open(upload_path, 'wb') as f:
-                        f.write(file_bytes)
-                    avatar_url = url_for('static', filename=f'uploads/{unique_filename}')
-                except Exception as e:
-                    logger.error(f"Failed to save file locally: {e}")
-                    return jsonify({"success": False, "message": "Failed to save profile picture."}), 500
+                import base64
+                b64_str = base64.b64encode(file_bytes).decode('utf-8')
+                avatar_url = f"data:{mimetype};base64,{b64_str}"
 
             # Update database record with new avatar URL
             db.update_admin_avatar(current_user.id, avatar_url)
@@ -119,9 +114,9 @@ def upload_avatar():
     data = request.get_json(silent=True) or {}
     image_url = data.get('avatar_url', '').strip()
     if image_url:
-        # Basic validation that it starts with https://
-        if not (image_url.startswith('https://') or image_url.startswith('http://') or image_url.startswith('/static/')):
-            return jsonify({"success": False, "message": "Please provide a valid image URL."}), 400
+        # Validate that it starts with https://, http://, data:image/, or /static/
+        if not (image_url.startswith('https://') or image_url.startswith('http://') or image_url.startswith('data:image/') or image_url.startswith('/static/')):
+            return jsonify({"success": False, "message": "Please provide a valid image URL or image data."}), 400
         db.update_admin_avatar(current_user.id, image_url)
         return jsonify({
             "success": True,

@@ -340,9 +340,76 @@ async function handleCreateEvent(event) {
       })
     });
     const data = await res.json();
-    if (data.success) {
+    if (data.success && data.event) {
       showToast(data.message, 'success');
-      setTimeout(() => location.reload(), 600);
+      
+      // Real-time dynamic insertion into eventsGrid
+      const grid = document.getElementById('eventsGrid');
+      if (grid) {
+        const evt = data.event;
+        let badgeColor = 'bg-amber-50 text-amber-800 border-amber-100';
+        let badgeIcon = '📢';
+        if (evt.event_type === 'Tournament') { badgeColor = 'bg-indigo-50 text-indigo-700 border-indigo-100'; badgeIcon = '🏆'; }
+        else if (evt.event_type === 'Open Play Day') { badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-100'; badgeIcon = '🏓'; }
+        else if (evt.event_type === 'Promo') { badgeColor = 'bg-purple-50 text-purple-700 border-purple-100'; badgeIcon = '🎁'; }
+
+        const photoHtml = evt.image_url ? `
+          <div class="w-full h-36 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100">
+            <img src="${evt.image_url}" alt="${evt.title}" class="w-full h-full object-cover" onerror="this.parentElement.style.display='none'">
+          </div>
+        ` : '';
+
+        const descHtml = evt.description ? `
+          <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100 leading-relaxed">
+            ${evt.description}
+          </p>
+        ` : '';
+
+        const newCard = document.createElement('div');
+        newCard.id = `event-card-${evt.id}`;
+        newCard.className = 'bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm hover-card flex flex-col justify-between transition-all overflow-hidden animate-fade-in';
+        newCard.innerHTML = `
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeColor}">
+                ${badgeIcon} ${evt.event_type}
+              </span>
+              <span class="text-[11px] font-bold text-emerald-600 flex items-center">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                Live
+              </span>
+            </div>
+            ${photoHtml}
+            <div>
+              <h5 class="font-black text-slate-900 text-sm leading-snug">${evt.title}</h5>
+              <p class="text-xs font-semibold text-indigo-600 mt-1 flex items-center">
+                <svg class="w-3.5 h-3.5 mr-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                ${evt.date}
+              </p>
+            </div>
+            ${descHtml}
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="text-[11px] text-slate-400 font-medium">By ${evt.author || 'Admin'}</span>
+            <button type="button" 
+                    onclick="deleteEvent('${evt.id}')" 
+                    class="text-rose-600 hover:text-rose-700 font-bold px-2.5 py-1 rounded-lg hover:bg-rose-50 transition-colors flex items-center space-x-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              <span>Delete</span>
+            </button>
+          </div>
+        `;
+        grid.prepend(newCard);
+      }
+
+      // Reset form
+      document.getElementById('eventTitle').value = '';
+      document.getElementById('eventDesc').value = '';
+      clearPhotoPreview();
     } else {
       showToast(data.message || 'Failed to publish event.', 'danger');
     }

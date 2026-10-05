@@ -41,7 +41,10 @@
         <div class="h-16 flex items-center justify-between px-6 border-b border-slate-100">
           <a href="{{ url_for('profile.profile_view') }}" class="flex items-center space-x-3 group"
             title="View & Edit Admin Profile">
-            <img id="topNavAvatarImg" src="{{ current_user.avatar_url }}" alt="Admin Avatar"
+            <img id="topNavAvatarImg" 
+              src="{{ current_user.avatar_url or 'https://ui-avatars.com/api/?name=' ~ (current_user.name or 'Admin') ~ '&background=4f46e5&color=fff' }}" 
+              alt="Admin Avatar"
+              onerror="this.src='https://ui-avatars.com/api/?name={{ current_user.name or 'Admin' }}&background=4f46e5&color=fff'"
               class="w-10 h-10 rounded-2xl object-cover border border-slate-200 shadow-md shadow-slate-200/60 flex-shrink-0 group-hover:scale-105 transition-all bg-slate-100">
             <div class="min-w-0">
               <span
@@ -123,7 +126,10 @@
         <a href="{{ url_for('profile.profile_view') }}" title="Customize Profile"
           class="bg-slate-50 hover:bg-slate-100/90 p-3 rounded-2xl border border-slate-200/80 flex items-center justify-between transition-all group {% if request.endpoint == 'profile.profile_view' %} ring-2 ring-indigo-500/30 bg-indigo-50/40 border-indigo-200 {% endif %}">
           <div class="flex items-center space-x-3 min-w-0">
-            <img id="sidebarAvatarImg" src="{{ current_user.avatar_url }}" alt="Profile"
+            <img id="sidebarAvatarImg" 
+              src="{{ current_user.avatar_url or 'https://ui-avatars.com/api/?name=' ~ (current_user.name or 'Admin') ~ '&background=4f46e5&color=fff' }}" 
+              alt="Profile"
+              onerror="this.src='https://ui-avatars.com/api/?name={{ current_user.name or 'Admin' }}&background=4f46e5&color=fff'"
               class="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-xs flex-shrink-0">
             <div class="min-w-0">
               <p id="sidebarAdminName"
