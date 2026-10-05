@@ -31,7 +31,7 @@
         <img id="mainProfileAvatar" 
              src="{{ user.avatar_url or 'https://ui-avatars.com/api/?name=' ~ (user.name or 'Admin') ~ '&background=4f46e5&color=fff' }}" 
              alt="{{ user.name }}" 
-             onerror="this.src='https://ui-avatars.com/api/?name={{ user.name or 'Admin' }}&background=4f46e5&color=fff'"
+             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Admin&background=4f46e5&color=fff';"
              class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-4 border-white shadow-md shadow-slate-200 bg-slate-100">
         <span class="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center shadow-xs" title="Online & Active">
           <span class="w-2 h-2 bg-white rounded-full"></span>
@@ -83,7 +83,7 @@
             <img id="avatarPreview" 
                  src="{{ user.avatar_url or 'https://ui-avatars.com/api/?name=' ~ (user.name or 'Admin') ~ '&background=4f46e5&color=fff' }}" 
                  alt="Avatar Preview" 
-                 onerror="this.src='https://ui-avatars.com/api/?name={{ user.name or 'Admin' }}&background=4f46e5&color=fff'"
+                 onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Admin&background=4f46e5&color=fff';"
                  class="w-28 h-28 rounded-full object-cover border-4 border-slate-100 shadow-md bg-slate-50">
             <label for="avatarFileInput" 
                    class="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-full shadow-md cursor-pointer transition-transform hover:scale-105 active:scale-95"
