@@ -12,7 +12,9 @@ class Config:
     # Database connection with SSL enforcement for remote PostgreSQL
     raw_db_url = os.environ.get('DATABASE_URL') or 'sqlite:///adminpickle.db'
     if raw_db_url.startswith('postgres://'):
-        raw_db_url = raw_db_url.replace('postgres://', 'postgresql://', 1)
+        raw_db_url = raw_db_url.replace('postgres://', 'postgresql+psycopg2://', 1)
+    elif raw_db_url.startswith('postgresql://'):
+        raw_db_url = raw_db_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
     if 'postgresql' in raw_db_url and 'sslmode' not in raw_db_url:
         separator = '&' if '?' in raw_db_url else '?'
         raw_db_url = f"{raw_db_url}{separator}sslmode=require"

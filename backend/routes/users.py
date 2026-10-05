@@ -7,6 +7,7 @@ users_bp = Blueprint('users', __name__)
 @users_bp.route('/users')
 @login_required
 def users_list():
+    # it fetches all the players data in db & pass ot to users.html
     players_data = [p.to_dict() if hasattr(p, 'to_dict') else p for p in db.players]
     return render_template('users.html', players=players_data)
 
