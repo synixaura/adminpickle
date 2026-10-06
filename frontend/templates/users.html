@@ -14,9 +14,9 @@
         <div class="relative flex-1">
           <input type="text" 
                  id="userSearchInput" 
-                 onkeyup="filterPlayers()"
-                 placeholder="Search by player name or ID (e.g. Sarah, USR-9982)..." 
-                 class="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 rounded-xl py-2.5 pl-9 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                 oninput="filterPlayers()"
+                 placeholder="Search by player name or handle (e.g. Maria, mariag)..." 
+                 class="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 rounded-xl py-2.5 pl-9 pr-4 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
           <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
@@ -24,16 +24,15 @@
 
         <!-- Filter Selects -->
         <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:space-x-3">
-          <select id="tierFilterSelect" onchange="filterPlayers()" class="flex-1 sm:flex-initial bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+          <select id="tierFilterSelect" onchange="filterPlayers()" class="flex-1 sm:flex-initial bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
             <option value="ALL">Rank Tier: All</option>
-            <option value="Diamond">Diamond</option>
-            <option value="Platinum">Platinum</option>
-            <option value="Gold">Gold</option>
-            <option value="Silver">Silver</option>
-            <option value="Bronze">Bronze</option>
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+            <option value="DUPR">DUPR Verified</option>
           </select>
 
-          <select id="statusFilterSelect" onchange="filterPlayers()" class="flex-1 sm:flex-initial bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+          <select id="statusFilterSelect" onchange="filterPlayers()" class="flex-1 sm:flex-initial bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
             <option value="ALL">Status: All</option>
             <option value="Active">Active</option>
             <option value="Frozen">Frozen</option>
@@ -41,8 +40,12 @@
           </select>
         </div>
       </div>
+      
+      <div class="flex items-center justify-between text-xs text-slate-400 px-1 pt-1 border-t border-slate-100">
+        <span id="playerCountLabel">Showing {{ players|length }} player{% if players|length != 1 %}s{% endif %}</span>
+        <span class="text-[11px] text-slate-400 font-medium">💡 Click on any player row to view details & actions</span>
+      </div>
     </div>
-
 
     <!-- Player Table Card -->
     <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
@@ -52,7 +55,7 @@
         <table class="w-full text-left border-collapse text-xs">
           <thead>
             <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
-              <th class="py-3 px-3">User ID</th>
+              <th class="py-3 px-3">User ID / Handle</th>
               <th class="py-3 px-3">Player Name</th>
               <th class="py-3 px-3">Elo Rating</th>
               <th class="py-3 px-3">Skill Level / Rank</th>
@@ -71,9 +74,10 @@
                 data-win-rate="{{ player.win_rate }}"
                 data-matches="{{ player.matches }}"
                 data-notes="{{ player.notes | default('') }}"
-                class="player-row cursor-pointer hover:bg-slate-50 transition-colors">
+                onclick="handleRowClick(this)"
+                class="player-row cursor-pointer hover:bg-slate-50 transition-all">
               <td class="py-3.5 px-3 font-mono font-bold text-slate-900">{{ player.id }}</td>
-              <td class="py-3.5 px-3 font-bold text-indigo-600 hover:underline">{{ player.name }}</td>
+              <td class="py-3.5 px-3 font-bold text-indigo-600 hover:text-indigo-800">{{ player.name }}</td>
               <td id="elo-{{ player.id }}" class="py-3.5 px-3 text-slate-800 font-semibold">{{ player.elo }}</td>
               <td class="py-3.5 px-3">
                 <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold 
@@ -92,6 +96,13 @@
                   {% else %} bg-rose-100 text-rose-800 {% endif %}">
                   {{ player.status }}
                 </span>
+              </td>
+            </tr>
+            {% else %}
+            <tr id="emptyPlayersRow">
+              <td colspan="6" class="py-8 text-center text-slate-400">
+                <p class="font-semibold text-sm text-slate-600">No players registered yet</p>
+                <p class="text-xs text-slate-400 mt-1">Player accounts created via the mobile app will automatically appear here.</p>
               </td>
             </tr>
             {% endfor %}
@@ -114,11 +125,11 @@
         <div class="w-20 h-20 rounded-3xl bg-indigo-600 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-xl shadow-indigo-100 border-2 border-white mb-3">
           <span id="inspAvatarLetter">P</span>
         </div>
-        <h4 id="inspPlayerName" class="text-lg font-black text-slate-900">Sarah Jenkins</h4>
-        <p id="inspPlayerId" class="text-xs font-mono font-bold text-slate-400">USR-9982</p>
+        <h4 id="inspPlayerName" class="text-lg font-black text-slate-900">Select a Player</h4>
+        <p id="inspPlayerId" class="text-xs font-mono font-bold text-slate-400">-</p>
         <div class="mt-2">
-          <span id="inspStatus" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-            Active
+          <span id="inspStatus" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+            Select a row
           </span>
         </div>
       </div>
@@ -127,19 +138,19 @@
       <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 space-y-3 text-xs mb-6">
         <div class="flex items-center justify-between">
           <span class="text-slate-500 font-medium">Elo Competitive Rating</span>
-          <span id="inspElo" class="font-bold text-slate-900 text-sm">1942</span>
+          <span id="inspElo" class="font-bold text-slate-900 text-sm">-</span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-slate-500 font-medium">Rank Tier</span>
-          <span id="inspTier" class="font-bold text-indigo-600">Diamond</span>
+          <span id="inspTier" class="font-bold text-indigo-600">-</span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-slate-500 font-medium">Win / Match Rate</span>
-          <span id="inspWinRate" class="font-bold text-slate-800">74.2%</span>
+          <span id="inspWinRate" class="font-bold text-slate-800">-</span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-slate-500 font-medium">Total Matches Played</span>
-          <span id="inspMatches" class="font-bold text-slate-800">312</span>
+          <span id="inspMatches" class="font-bold text-slate-800">-</span>
         </div>
       </div>
 
@@ -147,7 +158,7 @@
       <div class="space-y-1">
         <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Admin Operational Notes</label>
         <p id="inspNotes" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200/50 italic">
-          Top tier competitive player. Consistent league attendee.
+          Select a player from the directory to inspect account details and perform administrative moderation actions.
         </p>
       </div>
     </div>
@@ -155,23 +166,27 @@
     <!-- Administrative Action Buttons -->
     <div class="space-y-2.5 pt-4 border-t border-slate-100">
       <div class="grid grid-cols-2 gap-2">
-        <button onclick="performPlayerAction('freeze')" 
-                class="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-amber-200 transition-colors">
+        <button type="button" 
+                onclick="executePlayerAction('freeze')" 
+                class="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-amber-200 transition-colors shadow-xs active:scale-95">
           Freeze Account
         </button>
-        <button onclick="performPlayerAction('reset_rating')" 
-                class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-slate-300 transition-colors">
+        <button type="button" 
+                onclick="executePlayerAction('reset_rating')" 
+                class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-slate-300 transition-colors shadow-xs active:scale-95">
           Reset Rating
         </button>
       </div>
 
       <div class="grid grid-cols-2 gap-2">
-        <button onclick="performPlayerAction('ban')" 
-                class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow-md shadow-rose-200 transition-colors">
+        <button type="button" 
+                onclick="executePlayerAction('ban')" 
+                class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow-md shadow-rose-200 transition-colors active:scale-95">
           Ban Account
         </button>
-        <button onclick="performPlayerAction('unban')" 
-                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow-md shadow-emerald-200 transition-colors">
+        <button type="button" 
+                onclick="executePlayerAction('activate')" 
+                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow-md shadow-emerald-200 transition-colors active:scale-95">
           Activate / Unban
         </button>
       </div>
@@ -182,27 +197,165 @@
 
 {% block scripts %}
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
+  let currentlySelectedPlayerId = null;
+
+  function handleRowClick(rowElement) {
+    if (!rowElement) return;
+    const player = {
+      id: rowElement.getAttribute('data-id'),
+      name: rowElement.getAttribute('data-name'),
+      elo: rowElement.getAttribute('data-elo'),
+      tier: rowElement.getAttribute('data-tier'),
+      win_rate: rowElement.getAttribute('data-win-rate'),
+      matches: rowElement.getAttribute('data-matches'),
+      status: rowElement.getAttribute('data-status'),
+      notes: rowElement.getAttribute('data-notes')
+    };
+    updateInspector(player, rowElement);
+  }
+
+  function updateInspector(player, rowElement) {
+    if (!player || !player.id) return;
+    currentlySelectedPlayerId = player.id;
+
+    // Populate Inspector Fields
+    document.getElementById('inspPlayerId').innerText = player.id;
+    document.getElementById('inspPlayerName').innerText = player.name || player.id;
+    document.getElementById('inspElo').innerText = player.elo || '1420';
+    document.getElementById('inspTier').innerText = player.tier || 'Beginner';
+    document.getElementById('inspWinRate').innerText = player.win_rate || '0%';
+    document.getElementById('inspMatches').innerText = player.matches || '0';
+    document.getElementById('inspStatus').innerText = player.status || 'Active';
+    document.getElementById('inspNotes').innerText = player.notes || 'No administrative flags recorded for this player.';
+
+    const avatarLetter = document.getElementById('inspAvatarLetter');
+    if (avatarLetter && player.name) {
+      avatarLetter.innerText = player.name.trim().charAt(0).toUpperCase();
+    }
+
+    // Status Badge Styling
+    const statusBadge = document.getElementById('inspStatus');
+    if (player.status === 'Active') {
+      statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+    } else if (player.status === 'Frozen') {
+      statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800';
+    } else {
+      statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800';
+    }
+
+    // Highlight Selected Row
+    document.querySelectorAll('.player-row').forEach(r => {
+      r.classList.remove('bg-indigo-50/80', 'border-l-4', 'border-indigo-600');
+    });
+    if (rowElement) {
+      rowElement.classList.add('bg-indigo-50/80', 'border-l-4', 'border-indigo-600');
+    }
+  }
+
+  // Real-Time Search and Filter Logic
+  function filterPlayers() {
+    const searchVal = (document.getElementById('userSearchInput')?.value || '').trim().toLowerCase();
+    const tierVal = document.getElementById('tierFilterSelect')?.value || 'ALL';
+    const statusVal = document.getElementById('statusFilterSelect')?.value || 'ALL';
+
     const rows = document.querySelectorAll('.player-row');
+    let visibleCount = 0;
+
     rows.forEach(row => {
-      row.addEventListener('click', () => {
-        selectPlayer({
-          id: row.dataset.id,
-          name: row.dataset.name,
-          elo: row.dataset.elo,
-          tier: row.dataset.tier,
-          win_rate: row.dataset.winRate,
-          matches: row.dataset.matches,
-          status: row.dataset.status,
-          notes: row.dataset.notes
-        });
-      });
+      const name = (row.getAttribute('data-name') || '').toLowerCase();
+      const id = (row.getAttribute('data-id') || '').toLowerCase();
+      const tier = row.getAttribute('data-tier') || '';
+      const status = row.getAttribute('data-status') || '';
+
+      const matchesSearch = !searchVal || name.includes(searchVal) || id.includes(searchVal);
+      const matchesTier = tierVal === 'ALL' || tier.toLowerCase().includes(tierVal.toLowerCase());
+      const matchesStatus = statusVal === 'ALL' || status.toLowerCase() === statusVal.toLowerCase();
+
+      if (matchesSearch && matchesTier && matchesStatus) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
     });
 
-    // Select first player on initial load
-    if (rows.length > 0) {
-      rows[0].click();
+    const countLabel = document.getElementById('playerCountLabel');
+    if (countLabel) {
+      countLabel.innerText = `Showing ${visibleCount} player${visibleCount !== 1 ? 's' : ''}`;
+    }
+  }
+
+  // Admin Action Handler (Freeze, Ban, Reset Rating, Activate)
+  async function executePlayerAction(action) {
+    if (!currentlySelectedPlayerId) {
+      alert('Please click on a player in the table first.');
+      return;
+    }
+
+    const playerId = currentlySelectedPlayerId;
+    try {
+      const response = await fetch(`/api/users/${encodeURIComponent(playerId)}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: action })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        // Show success alert
+        alert(result.message || 'Action completed successfully!');
+
+        // Update status in Inspector and Table
+        if (result.status) {
+          const statusBadge = document.getElementById('inspStatus');
+          statusBadge.innerText = result.status;
+          if (result.status === 'Active') {
+            statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+          } else if (result.status === 'Frozen') {
+            statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800';
+          } else {
+            statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800';
+          }
+
+          // Update Table Row
+          const rowStatus = document.getElementById(`status-${playerId}`);
+          const rowElem = document.getElementById(`row-${playerId}`);
+          if (rowStatus) {
+            rowStatus.innerText = result.status;
+            rowStatus.className = 'px-2.5 py-1 rounded-full text-xs font-semibold ' + (
+              result.status === 'Active' ? 'bg-emerald-100 text-emerald-800' :
+              result.status === 'Frozen' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+            );
+          }
+          if (rowElem) {
+            rowElem.setAttribute('data-status', result.status);
+          }
+        }
+
+        // Update Elo Rating
+        if (result.elo !== undefined) {
+          document.getElementById('inspElo').innerText = result.elo;
+          const rowElo = document.getElementById(`elo-${playerId}`);
+          const rowElem = document.getElementById(`row-${playerId}`);
+          if (rowElo) rowElo.innerText = result.elo;
+          if (rowElem) rowElem.setAttribute('data-elo', result.elo);
+        }
+      } else {
+        alert(result.message || 'Failed to perform player action.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error communicating with server.');
+    }
+  }
+
+  // Initial Load: Auto-select the first player in table
+  document.addEventListener('DOMContentLoaded', () => {
+    const firstRow = document.querySelector('.player-row');
+    if (firstRow) {
+      handleRowClick(firstRow);
     }
   });
 </script>
 {% endblock %}
+
