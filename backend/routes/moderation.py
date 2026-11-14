@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import login_required, current_user
+from backend.app import limiter
 from backend.models.mock_db import db
 
 moderation_bp = Blueprint('moderation', __name__)
@@ -14,6 +15,7 @@ def moderation_view():
 
 @moderation_bp.route('/api/moderation/dismiss', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def dismiss_report_api():
     data = request.get_json() or {}
     report_id = data.get('report_id')
@@ -27,6 +29,7 @@ def dismiss_report_api():
 
 @moderation_bp.route('/api/moderation/warn', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def warn_report_api():
     data = request.get_json() or {}
     report_id = data.get('report_id')
@@ -40,6 +43,7 @@ def warn_report_api():
 
 @moderation_bp.route('/api/moderation/action', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def report_action():
     data = request.get_json() or {}
     report_id = data.get('report_id')

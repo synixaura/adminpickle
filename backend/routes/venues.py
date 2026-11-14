@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import login_required, current_user
+from backend.app import limiter
 from backend.models.mock_db import db
 
 venues_bp = Blueprint('venues', __name__)
@@ -51,6 +52,7 @@ def get_booking_grid():
 
 @venues_bp.route('/api/booking-sheet/save', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def save_booking():
     data = request.get_json() or {}
     date = data.get('date')
@@ -84,6 +86,7 @@ def save_booking():
 
 @venues_bp.route('/api/booking-sheet/clear', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def clear_booking():
     data = request.get_json() or {}
     date = data.get('date')

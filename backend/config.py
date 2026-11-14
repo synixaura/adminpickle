@@ -7,7 +7,12 @@ class Config:
     IS_PRODUCTION = bool(os.environ.get('VERCEL') or os.environ.get('FLASK_ENV') == 'production')
     DEBUG = not IS_PRODUCTION and (os.environ.get('DEBUG', 'True').lower() in ('true', '1'))
 
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'pickle-legends-admin-super-secret-key-2026'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        raise ValueError("SECRET_KEY environment variable is required and must not be empty.")
+
+    # Base URL for OAuth callbacks and server links (e.g. https://admin.picklelegends.ph)
+    ADMIN_BASE_URL = os.environ.get('ADMIN_BASE_URL', '').rstrip('/')
 
     # Database connection with driver resilience and SSL enforcement for remote PostgreSQL
     raw_db_url = os.environ.get('DATABASE_URL')
@@ -39,7 +44,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Security & Session Hardening
-    PERMANENT_SESSION_LIFETIME = 86400  # 24 hours
+    PERMANENT_SESSION_LIFETIME = 3600   # 60 minutes idle timeout
     SESSION_COOKIE_HTTPONLY = True      # Protect against XSS cookie theft
     SESSION_COOKIE_SECURE = IS_PRODUCTION  # Enforce HTTPS transmission in production
     SESSION_COOKIE_SAMESITE = 'Lax'     # Protect against CSRF

@@ -4,13 +4,8 @@ Handles dashboard stats, system log displays, and quick admin action triggers.
 """
 
 from flask import Blueprint, render_template, jsonify, request
-try:
-    from flask_login import login_required, current_user
-except ImportError:
-    def login_required(f): return f
-    class DummyUser:
-        name = "System Admin"
-    current_user = DummyUser()
+from flask_login import login_required, current_user
+from backend.app import limiter
 from backend.models.mock_db import db
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -31,6 +26,7 @@ def index():
 
 @dashboard_bp.route('/api/action/quick_announcement', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def quick_announcement():
     """Posts a quick announcement to player boards."""
     data = request.get_json() or {}
@@ -41,7 +37,7 @@ def quick_announcement():
     if not title:
         return jsonify({"success": False, "message": "Announcement title is required."}), 400
 
-    author_name = getattr(current_user, 'name', 'Karl Alegrado')
+    author_name = getattr(current_user, 'name', 'Admin')
     new_post = db.create_event_post(
         title=title,
         event_type="Announcement",
@@ -59,6 +55,7 @@ def quick_announcement():
 
 @dashboard_bp.route('/api/action/block_slot', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def block_slot():
     """Emergency action: Blocks court slot A3 for maintenance."""
     db.add_audit_log("Emergency Blocked Court Slot A3", current_user.name)
@@ -67,6 +64,7 @@ def block_slot():
 
 @dashboard_bp.route('/api/action/issue_warning', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def issue_warning():
     """Broadcasts a conduct warning to platform users."""
     data = request.get_json() or {}

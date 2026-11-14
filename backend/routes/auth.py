@@ -1,19 +1,22 @@
 import logging
+import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from backend.app import oauth
+from backend.app import oauth, limiter
 from backend.models.mock_db import db
 
 auth_bp = Blueprint('auth', __name__)
 logger = logging.getLogger(__name__)
 
 @auth_bp.route('/login')
+@limiter.limit("10 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
     return render_template('login.html')
 
 @auth_bp.route('/login/google')
+@limiter.limit("10 per minute")
 def google_login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
@@ -23,12 +26,18 @@ def google_login():
     if next_page and next_page.startswith('/') and not next_page.startswith('//'):
         session['next_url'] = next_page
 
-    # Ensure scheme is https when running on Vercel/production or behind SSL proxy
-    scheme = 'https' if (request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https' or current_app.config.get('IS_PRODUCTION')) else 'http'
-    redirect_uri = url_for('auth.google_callback', _external=True, _scheme=scheme)
+    # Build OAuth redirect URI from ADMIN_BASE_URL if configured, otherwise fallback to request host
+    admin_base_url = current_app.config.get('ADMIN_BASE_URL')
+    if admin_base_url:
+        redirect_uri = f"{admin_base_url.rstrip('/')}/login/google/callback"
+    else:
+        scheme = 'https' if (request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https' or current_app.config.get('IS_PRODUCTION')) else 'http'
+        redirect_uri = url_for('auth.google_callback', _external=True, _scheme=scheme)
+
     return oauth.google.authorize_redirect(redirect_uri, prompt='select_account')
 
 @auth_bp.route('/login/google/callback')
+@limiter.limit("10 per minute")
 def google_callback():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))
@@ -59,6 +68,12 @@ def google_callback():
         flash('Unable to retrieve verified email from Google.', 'danger')
         return redirect(url_for('auth.login'))
 
+    # Require email_verified from Google
+    if userinfo.get('email_verified') is not True:
+        logger.warning("Rejected login attempt: Google account email is not verified.")
+        flash('This Google account email is not verified.', 'danger')
+        return redirect(url_for('auth.login'))
+
     google_email = userinfo['email'].strip().lower()
     allowed_emails = current_app.config.get('ALLOWED_ADMIN_EMAILS', [])
 
@@ -73,8 +88,6 @@ def google_callback():
             if e.strip()
         ]
         current_app.config['ALLOWED_ADMIN_EMAILS'] = allowed_emails
-
-    print(f"[AUTH] Google signed-in email: '{google_email}' | Allowed list: {allowed_emails}")
 
     # Access control: verify against allowed admin emails
     if google_email not in allowed_emails:
@@ -92,6 +105,8 @@ def google_callback():
         return redirect(url_for('auth.login'))
 
     login_user(admin_user, remember=False)
+    session.permanent = True
+    session['_last_active'] = time.time()
     flash(f"Welcome back, {admin_user.name}!", "success")
 
     next_page = session.pop('next_url', None)

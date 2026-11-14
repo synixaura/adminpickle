@@ -4,14 +4,20 @@ import sys
 # Ensure root directory is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from flask import Flask, render_template
-from flask_login import LoginManager
+import time
+from flask import Flask, render_template, session, redirect, url_for, flash, current_app, request
+from flask_login import LoginManager, current_user, logout_user
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from authlib.integrations.flask_client import OAuth
 from werkzeug.middleware.proxy_fix import ProxyFix
 from backend.config import Config
 from backend.models.mock_db import db, sqla
 
 oauth = OAuth()
+csrf = CSRFProtect()
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
 def create_app():
     # Resolve absolute paths for frontend templates & static assets
@@ -84,6 +90,33 @@ def create_app():
         server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
         client_kwargs={'scope': 'openid email profile'}
     )
+
+    # Initialize CSRF Protection and Rate Limiting
+    csrf.init_app(app)
+    limiter.init_app(app)
+
+    @app.before_request
+    def enforce_session_security():
+        session.permanent = True
+        if current_user.is_authenticated:
+            now = time.time()
+            last_active = session.get('_last_active')
+            idle_timeout = 60 * 60  # 60 minutes idle timeout
+            if last_active and (now - last_active > idle_timeout):
+                logout_user()
+                session.clear()
+                flash('Your session has expired due to 60 minutes of inactivity. Please sign in again.', 'info')
+                return redirect(url_for('auth.login'))
+            session['_last_active'] = now
+
+            # Re-check on each request that the logged-in email is still in ALLOWED_ADMIN_EMAILS
+            allowed_emails = app.config.get('ALLOWED_ADMIN_EMAILS', [])
+            user_email = getattr(current_user, 'email', None)
+            if not user_email or user_email.strip().lower() not in allowed_emails:
+                logout_user()
+                session.clear()
+                flash('Your account is no longer authorized for admin access.', 'danger')
+                return redirect(url_for('auth.login'))
 
     # Register Blueprints
     from backend.routes.auth import auth_bp

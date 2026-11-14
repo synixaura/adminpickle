@@ -5,14 +5,8 @@ both for the Admin Dashboard and player-facing client apps.
 """
 
 from flask import Blueprint, render_template, jsonify, request
-try:
-    from flask_login import login_required, current_user
-except ImportError:
-    def login_required(f): return f
-    class DummyUser:
-        name = "Karl Alegrado"
-    current_user = DummyUser()
-
+from flask_login import login_required, current_user
+from backend.app import limiter
 from backend.models.mock_db import db
 
 events_bp = Blueprint('events', __name__)
@@ -32,6 +26,7 @@ def events_view():
 
 @events_bp.route('/api/events/create', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def create_event():
     """Creates a new event or announcement post."""
     data = request.get_json() or {}
@@ -44,7 +39,7 @@ def create_event():
     if not title:
         return jsonify({"success": False, "message": "Event title is required."}), 400
 
-    author_name = getattr(current_user, 'name', 'Karl Alegrado')
+    author_name = getattr(current_user, 'name', 'Admin')
     new_post = db.create_event_post(
         title=title,
         event_type=event_type,
@@ -63,9 +58,10 @@ def create_event():
 
 @events_bp.route('/api/events/delete/<post_id>', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def delete_event(post_id):
     """Removes an event post."""
-    author_name = getattr(current_user, 'name', 'Karl Alegrado')
+    author_name = getattr(current_user, 'name', 'Admin')
     success = db.delete_event_post(post_id, author_name)
     if success:
         return jsonify({"success": True, "message": "Event post deleted successfully."})

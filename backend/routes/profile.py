@@ -5,6 +5,7 @@ import requests
 from flask import Blueprint, render_template, request, jsonify, current_app, url_for
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+from backend.app import limiter
 from backend.models.mock_db import db
 
 profile_bp = Blueprint('profile', __name__)
@@ -70,6 +71,7 @@ def profile_view():
 
 @profile_bp.route('/api/profile/upload-avatar', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def upload_avatar():
     """Handles avatar file uploads and image URL updates for the current administrator."""
     # Check if a file was uploaded via multipart/form-data
@@ -128,6 +130,7 @@ def upload_avatar():
 
 @profile_bp.route('/api/profile/update-info', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def update_profile_info():
     """Updates admin display name and/or role title."""
     data = request.get_json() or {}

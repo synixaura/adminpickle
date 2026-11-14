@@ -3,6 +3,10 @@
  * Handles navigation, interactive AJAX actions, profile inspector, court grid toggles, and modals.
  */
 
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 // Toast Notifications System
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container') || (() => {

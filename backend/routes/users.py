@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import login_required, current_user
+from backend.app import limiter
 from backend.models.mock_db import db
 
 users_bp = Blueprint('users', __name__)
@@ -13,6 +14,7 @@ def users_list():
 
 @users_bp.route('/api/users/<player_id>/action', methods=['POST'])
 @login_required
+@limiter.limit("30 per minute")
 def player_action(player_id):
     data = request.get_json() or {}
     action = data.get('action')
@@ -33,8 +35,8 @@ def player_action(player_id):
         return jsonify({"success": True, "status": "Active", "message": f"Account {player_id} is now Active."})
 
     elif action == 'reset_rating':
-        db.reset_player_rating(player_id, 1500)
-        db.add_audit_log(f"Reset Elo rating to 1500 for player {player_id}", current_user.name)
-        return jsonify({"success": True, "elo": 1500, "message": f"Elo rating for {player_id} reset to 1500."})
+        db.reset_player_rating(player_id, 0)
+        db.add_audit_log(f"Reset Elo rating to 0 for player {player_id}", current_user.name)
+        return jsonify({"success": True, "elo": 0, "message": f"Elo rating for {player_id} reset to 0."})
 
     return jsonify({"success": False, "message": "Invalid action requested."}), 400
