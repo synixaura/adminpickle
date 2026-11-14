@@ -15,7 +15,7 @@
           <input type="text" 
                  id="userSearchInput" 
                  oninput="filterPlayers()"
-                 placeholder="Search by player name or handle (e.g. Maria, mariag)..." 
+                 placeholder="Search by player name or handle (e.g. callie, Calliere)..." 
                  class="w-full bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 rounded-xl py-2.5 pl-9 pr-4 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
           <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -24,14 +24,29 @@
 
         <!-- Filter Selects -->
         <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:space-x-3">
+          <!-- Comprehensive Rank & Skill Filter -->
           <select id="tierFilterSelect" onchange="filterPlayers()" class="flex-1 sm:flex-initial bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
-            <option value="ALL">Rank Tier: All</option>
-            <option value="Beginner">Beginner</option>
-            <option value="Intermediate">Intermediate</option>
-            <option value="Advanced">Advanced</option>
-            <option value="DUPR">DUPR Verified</option>
+            <option value="ALL">All Ranks & Skills</option>
+            <optgroup label="Competitive Tiers (XP)">
+              <option value="Bronze">🥉 Bronze (IV - I)</option>
+              <option value="Silver">🥈 Silver (IV - I)</option>
+              <option value="Gold">🥇 Gold (IV - I)</option>
+              <option value="Platinum">💎 Platinum (IV - I)</option>
+              <option value="Diamond">💠 Diamond (IV - I)</option>
+              <option value="Master">👑 Master</option>
+              <option value="Emperor">⚡ Emperor</option>
+            </optgroup>
+            <optgroup label="Skill & DUPR Rating">
+              <option value="DUPR_VERIFIED">✓ DUPR Verified Only</option>
+              <option value="Novice">Novice (&lt; 2.0)</option>
+              <option value="Beginner">Beginner (&lt; 3.0)</option>
+              <option value="Intermediate">Intermediate (3.0 - 3.99)</option>
+              <option value="Advanced">Advanced (4.0 - 4.99)</option>
+              <option value="Expert">Expert (5.0+)</option>
+            </optgroup>
           </select>
 
+          <!-- Account Status Filter -->
           <select id="statusFilterSelect" onchange="filterPlayers()" class="flex-1 sm:flex-initial bg-slate-50 border border-slate-200 text-xs text-slate-700 font-semibold rounded-xl px-3 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
             <option value="ALL">Status: All</option>
             <option value="Active">Active</option>
@@ -43,13 +58,16 @@
       
       <div class="flex items-center justify-between text-xs text-slate-400 px-1 pt-1 border-t border-slate-100">
         <span id="playerCountLabel">Showing {{ players|length }} player{% if players|length != 1 %}s{% endif %}</span>
-        <span class="text-[11px] text-slate-400 font-medium">💡 Click on any player row to view details & actions</span>
+        <span class="text-[11px] text-slate-400 font-medium">💡 Click on any player row to inspect profile & manage rating</span>
       </div>
     </div>
 
     <!-- Player Table Card -->
     <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
-      <h3 class="text-base font-bold text-slate-900 mb-4">Player Directory</h3>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-900">Player Directory</h3>
+        <span class="text-[11px] font-semibold text-slate-400">Synchronized with Pickle-Legends</span>
+      </div>
       
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse text-xs">
@@ -58,7 +76,8 @@
               <th class="py-3 px-3">User ID / Handle</th>
               <th class="py-3 px-3">Player Name</th>
               <th class="py-3 px-3">Elo Rating</th>
-              <th class="py-3 px-3">Skill Level / Rank</th>
+              <th class="py-3 px-3">Competitive Rank</th>
+              <th class="py-3 px-3">Skill / DUPR</th>
               <th class="py-3 px-3">Match Rate</th>
               <th class="py-3 px-3 text-right">Status</th>
             </tr>
@@ -68,7 +87,19 @@
             <tr id="row-{{ player.id }}" 
                 data-name="{{ player.name }}"
                 data-id="{{ player.id }}"
-                data-tier="{{ player.tier }}"
+                data-rank="{{ player.rank }}"
+                data-rank-short="{{ player.rank_short }}"
+                data-tier-icon="{{ player.tier_icon }}"
+                data-tier-color="{{ player.tier_color }}"
+                data-tier-division="{{ player.tier_division }}"
+                data-xp="{{ player.xp }}"
+                data-max-xp="{{ player.max_xp }}"
+                data-tier-pct="{{ player.tier_progress_pct }}"
+                data-skill-level="{{ player.skill_level }}"
+                data-skill-tier="{{ player.skill_tier }}"
+                data-dupr-rating="{{ player.dupr_rating if player.dupr_rating is not none else '' }}"
+                data-dupr-verified="{{ 'true' if player.dupr_verified else 'false' }}"
+                data-dupr-id="{{ player.dupr_id or '' }}"
                 data-status="{{ player.status }}"
                 data-elo="{{ player.elo }}"
                 data-win-rate="{{ player.win_rate }}"
@@ -80,13 +111,27 @@
               <td class="py-3.5 px-3 font-bold text-indigo-600 hover:text-indigo-800">{{ player.name }}</td>
               <td id="elo-{{ player.id }}" class="py-3.5 px-3 text-slate-800 font-semibold">{{ player.elo }}</td>
               <td class="py-3.5 px-3">
-                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold 
-                  {% if 'DUPR' in player.tier or 'Advanced' in player.tier %} bg-purple-100 text-purple-800 
-                  {% elif 'Intermediate' in player.tier %} bg-blue-100 text-blue-800 
-                  {% elif 'Beginner' in player.tier %} bg-emerald-100 text-emerald-800 
-                  {% else %} bg-slate-100 text-slate-800 {% endif %}">
-                  {{ player.tier }}
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
+                      style="background-color: {{ player.tier_color }}18; color: {{ player.tier_color }}; border-color: {{ player.tier_color }}40;">
+                  <span>{{ player.tier_icon }}</span>
+                  <span>{{ player.rank }}</span>
                 </span>
+              </td>
+              <td class="py-3.5 px-3">
+                {% if player.dupr_verified and player.dupr_rating %}
+                  <span class="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px]">
+                    <svg class="w-2.5 h-2.5 inline" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                    {{ "%.2f"|format(player.dupr_rating) }} DUPR
+                  </span>
+                {% elif player.dupr_rating %}
+                  <span class="inline-flex items-center text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">
+                    {{ "%.2f"|format(player.dupr_rating) }} DUPR
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center text-slate-600 font-medium bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full text-[10px]">
+                    {{ player.skill_level or player.self_reported_skill or 'Beginner' }}
+                  </span>
+                {% endif %}
               </td>
               <td class="py-3.5 px-3 text-slate-600">{{ player.win_rate }}</td>
               <td class="py-3.5 px-3 text-right">
@@ -100,7 +145,7 @@
             </tr>
             {% else %}
             <tr id="emptyPlayersRow">
-              <td colspan="6" class="py-8 text-center text-slate-400">
+              <td colspan="7" class="py-8 text-center text-slate-400">
                 <p class="font-semibold text-sm text-slate-600">No players registered yet</p>
                 <p class="text-xs text-slate-400 mt-1">Player accounts created via the mobile app will automatically appear here.</p>
               </td>
@@ -122,8 +167,9 @@
 
       <!-- Player Avatar & Main Summary -->
       <div class="text-center my-6">
-        <div class="w-20 h-20 rounded-3xl bg-indigo-600 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-xl shadow-indigo-100 border-2 border-white mb-3">
+        <div class="relative w-20 h-20 rounded-3xl bg-indigo-600 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-xl shadow-indigo-100 border-2 border-white mb-3">
           <span id="inspAvatarLetter">P</span>
+          <span id="inspTierBadgeIcon" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-slate-200 text-xs flex items-center justify-center shadow-xs">🥉</span>
         </div>
         <h4 id="inspPlayerName" class="text-lg font-black text-slate-900">Select a Player</h4>
         <p id="inspPlayerId" class="text-xs font-mono font-bold text-slate-400">-</p>
@@ -135,19 +181,42 @@
       </div>
 
       <!-- Details List Grid -->
-      <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 space-y-3 text-xs mb-6">
+      <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-4 space-y-3.5 text-xs mb-6">
+        <!-- Competitive Rank -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-slate-500 font-medium">Competitive Rank (XP)</span>
+            <span id="inspRank" class="inline-flex items-center gap-1 font-bold text-slate-900 text-xs">-</span>
+          </div>
+          <!-- XP Progress Bar -->
+          <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+            <div id="inspXpBar" class="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+            <span id="inspXpText">0 / 1000 XP</span>
+            <span id="inspTierDivision">-</span>
+          </div>
+        </div>
+
+        <!-- Skill & DUPR Level -->
+        <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+          <span class="text-slate-500 font-medium">Skill / DUPR Level</span>
+          <span id="inspSkill" class="font-bold text-slate-800 text-right">-</span>
+        </div>
+
+        <!-- Elo Rating -->
         <div class="flex items-center justify-between">
-          <span class="text-slate-500 font-medium">Elo Competitive Rating</span>
+          <span class="text-slate-500 font-medium">Elo Rating</span>
           <span id="inspElo" class="font-bold text-slate-900 text-sm">-</span>
         </div>
-        <div class="flex items-center justify-between">
-          <span class="text-slate-500 font-medium">Rank Tier</span>
-          <span id="inspTier" class="font-bold text-indigo-600">-</span>
-        </div>
+
+        <!-- Win / Match Rate -->
         <div class="flex items-center justify-between">
           <span class="text-slate-500 font-medium">Win / Match Rate</span>
           <span id="inspWinRate" class="font-bold text-slate-800">-</span>
         </div>
+
+        <!-- Total Matches -->
         <div class="flex items-center justify-between">
           <span class="text-slate-500 font-medium">Total Matches Played</span>
           <span id="inspMatches" class="font-bold text-slate-800">-</span>
@@ -174,7 +243,7 @@
         <button type="button" 
                 onclick="executePlayerAction('reset_rating')" 
                 class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-slate-300 transition-colors shadow-xs active:scale-95">
-          Reset Rating
+          Reset Rating (0)
         </button>
       </div>
 
@@ -205,7 +274,19 @@
       id: rowElement.getAttribute('data-id'),
       name: rowElement.getAttribute('data-name'),
       elo: rowElement.getAttribute('data-elo'),
-      tier: rowElement.getAttribute('data-tier'),
+      rank: rowElement.getAttribute('data-rank'),
+      rank_short: rowElement.getAttribute('data-rank-short'),
+      tier_icon: rowElement.getAttribute('data-tier-icon'),
+      tier_color: rowElement.getAttribute('data-tier-color'),
+      tier_division: rowElement.getAttribute('data-tier-division'),
+      xp: rowElement.getAttribute('data-xp'),
+      max_xp: rowElement.getAttribute('data-max-xp'),
+      tier_pct: rowElement.getAttribute('data-tier-pct'),
+      skill_level: rowElement.getAttribute('data-skill-level'),
+      skill_tier: rowElement.getAttribute('data-skill-tier'),
+      dupr_rating: rowElement.getAttribute('data-dupr-rating'),
+      dupr_verified: rowElement.getAttribute('data-dupr-verified') === 'true',
+      dupr_id: rowElement.getAttribute('data-dupr-id'),
       win_rate: rowElement.getAttribute('data-win-rate'),
       matches: rowElement.getAttribute('data-matches'),
       status: rowElement.getAttribute('data-status'),
@@ -221,8 +302,45 @@
     // Populate Inspector Fields
     document.getElementById('inspPlayerId').innerText = player.id;
     document.getElementById('inspPlayerName').innerText = player.name || player.id;
-    document.getElementById('inspElo').innerText = player.elo || '1420';
-    document.getElementById('inspTier').innerText = player.tier || 'Beginner';
+    document.getElementById('inspElo').innerText = player.elo || '0';
+    
+    // Competitive Rank with Icon & Color
+    const inspRankElem = document.getElementById('inspRank');
+    inspRankElem.innerHTML = `<span>${player.tier_icon || '🥉'}</span> <span>${player.rank || 'Bronze IV'}</span>`;
+    if (player.tier_color) {
+      inspRankElem.style.color = player.tier_color;
+    }
+    
+    // XP Bar & Text
+    const xp = parseInt(player.xp || '0');
+    const maxXp = parseInt(player.max_xp || '1000');
+    const pct = Math.min(100, Math.max(0, parseInt(player.tier_pct || '0')));
+    document.getElementById('inspXpBar').style.width = pct + '%';
+    if (player.tier_color) {
+      document.getElementById('inspXpBar').style.backgroundColor = player.tier_color;
+    }
+    document.getElementById('inspXpText').innerText = `${xp.toLocaleString()} / ${maxXp.toLocaleString()} XP (${pct}%)`;
+    document.getElementById('inspTierDivision').innerText = player.tier_division || '';
+
+    // Tier Icon Badge on Avatar
+    const badgeIcon = document.getElementById('inspTierBadgeIcon');
+    if (badgeIcon) {
+      badgeIcon.innerText = player.tier_icon || '🥉';
+      if (player.tier_color) {
+        badgeIcon.style.borderColor = player.tier_color;
+      }
+    }
+
+    // Skill & DUPR Display
+    const inspSkillElem = document.getElementById('inspSkill');
+    if (player.dupr_verified && player.dupr_rating) {
+      inspSkillElem.innerHTML = `<span class="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">✓ ${parseFloat(player.dupr_rating).toFixed(2)} DUPR (Verified)</span>`;
+    } else if (player.dupr_rating) {
+      inspSkillElem.innerHTML = `<span class="text-slate-700 font-semibold bg-slate-100 px-2 py-0.5 rounded-full">${parseFloat(player.dupr_rating).toFixed(2)} DUPR (Unverified)</span>`;
+    } else {
+      inspSkillElem.innerHTML = `<span class="text-slate-700 font-semibold">${player.skill_level || 'Beginner'}</span>`;
+    }
+
     document.getElementById('inspWinRate').innerText = player.win_rate || '0%';
     document.getElementById('inspMatches').innerText = player.matches || '0';
     document.getElementById('inspStatus').innerText = player.status || 'Active';
@@ -255,7 +373,7 @@
   // Real-Time Search and Filter Logic
   function filterPlayers() {
     const searchVal = (document.getElementById('userSearchInput')?.value || '').trim().toLowerCase();
-    const tierVal = document.getElementById('tierFilterSelect')?.value || 'ALL';
+    const filterVal = document.getElementById('tierFilterSelect')?.value || 'ALL';
     const statusVal = document.getElementById('statusFilterSelect')?.value || 'ALL';
 
     const rows = document.querySelectorAll('.player-row');
@@ -264,14 +382,29 @@
     rows.forEach(row => {
       const name = (row.getAttribute('data-name') || '').toLowerCase();
       const id = (row.getAttribute('data-id') || '').toLowerCase();
-      const tier = row.getAttribute('data-tier') || '';
+      const rank = (row.getAttribute('data-rank') || '').toLowerCase();
+      const rankShort = (row.getAttribute('data-rank-short') || '').toLowerCase();
+      const skillLevel = (row.getAttribute('data-skill-level') || '').toLowerCase();
+      const skillTier = (row.getAttribute('data-skill-tier') || '').toLowerCase();
+      const isDuprVerified = row.getAttribute('data-dupr-verified') === 'true';
       const status = row.getAttribute('data-status') || '';
 
       const matchesSearch = !searchVal || name.includes(searchVal) || id.includes(searchVal);
-      const matchesTier = tierVal === 'ALL' || tier.toLowerCase().includes(tierVal.toLowerCase());
+      
+      let matchesFilter = true;
+      if (filterVal !== 'ALL') {
+        if (filterVal === 'DUPR_VERIFIED') {
+          matchesFilter = isDuprVerified;
+        } else {
+          const target = filterVal.toLowerCase();
+          // Matches rank tier (Bronze, Silver, Gold, etc.) OR skill tier (Beginner, Intermediate, etc.)
+          matchesFilter = rank.includes(target) || rankShort.includes(target) || skillLevel.includes(target) || skillTier.includes(target);
+        }
+      }
+
       const matchesStatus = statusVal === 'ALL' || status.toLowerCase() === statusVal.toLowerCase();
 
-      if (matchesSearch && matchesTier && matchesStatus) {
+      if (matchesSearch && matchesFilter && matchesStatus) {
         row.style.display = '';
         visibleCount++;
       } else {
@@ -358,4 +491,3 @@
   });
 </script>
 {% endblock %}
-

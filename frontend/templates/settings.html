@@ -29,6 +29,7 @@
       </div>
     </div>
 
+    <!-- Stepper & Save Row -->
     <div class="bg-slate-50 border border-slate-200/70 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
       <div class="space-y-1 text-center sm:text-left">
         <p class="text-xs font-bold text-slate-800 uppercase tracking-wider">Total Available Courts</p>
@@ -71,6 +72,124 @@
           <span>Save Changes</span>
         </button>
       </div>
+    </div>
+
+    <!-- Court Descriptions & Sublabels Customizer -->
+    <div class="mt-6 pt-6 border-t border-slate-200/80">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
+        <div>
+          <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Court Names & Sub-Labels</h4>
+          <p class="text-xs text-slate-500">Customize the label under each court (e.g. "Outdoor", "Air-Con Indoor", "Court A", "Training Yard"). These sync live to player and host devices.</p>
+        </div>
+        <span class="text-[11px] font-semibold text-slate-400">Auto-saved on edit</span>
+      </div>
+
+      <div id="courtDescriptionsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {% for i in range(1, (total_courts or 4) + 1) %}
+        {% set court_str = i|string %}
+        {% set current_desc = (court_descriptions and court_descriptions.get(court_str)) or (
+          'Main Court' if i == 1 else
+          'Air-Con Indoor' if i == 2 else
+          'Outdoor Pro' if i == 3 else
+          'Training Yard' if i == 4 else
+          'Covered Court' if i == 5 else
+          'Recreational Court' if i == 6 else
+          'Court ' ~ i
+        ) %}
+        <div class="court-desc-card bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3.5 hover:border-indigo-300 hover:bg-white transition-all" id="court_card_{{ i }}" data-court-num="{{ i }}">
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-flex items-center font-black text-xs px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700">C{{ i }}</span>
+            <span class="text-xs font-bold text-slate-700">Court {{ i }}</span>
+          </div>
+          <label class="block text-[10.5px] font-semibold text-slate-500 mb-1">Sub-label / Type</label>
+          <input type="text"
+                 id="court_desc_{{ i }}"
+                 class="court-desc-input w-full px-3 py-1.5 text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all"
+                 placeholder="e.g. Outdoor / Indoor"
+                 value="{{ current_desc }}"
+                 maxlength="40"
+                 oninput="handleDescInput()">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Court Crew & Inquiries Contact Manager -->
+  <div class="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-6 mb-6">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Court Crew & Inquiry Contacts</h3>
+          <p class="text-xs text-slate-500">Manage contact persons shown to players on the Bookings & Inquiries screen (Call / Text)</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span id="contactSaveStatus" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Synced live ?
+        </span>
+        <button onclick="openAddContactModal()" class="px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition-all flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+          Add Contact
+        </button>
+      </div>
+    </div>
+
+    <!-- Contacts Grid -->
+    <div id="crewContactsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+      <!-- Injected via renderContacts() -->
+    </div>
+  </div>
+
+  <!-- Add/Edit Contact Modal -->
+  <div id="contactModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+        <h4 id="contactModalTitle" class="text-base font-bold text-slate-900">Add Contact Person</h4>
+        <button onclick="closeContactModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+      </div>
+      <form id="contactForm" onsubmit="handleContactSubmit(event)" class="space-y-4">
+        <input type="hidden" id="modalContactId" value="">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+          <input type="text" id="modalContactName" class="w-full px-3 py-2 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none" placeholder="e.g. Cielo Dela Cruz" required>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Role / Tag</label>
+            <select id="modalContactRole" class="w-full px-3 py-2 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none">
+              <option value="Owner">Owner</option>
+              <option value="Staff" selected>Staff</option>
+              <option value="Manager">Manager</option>
+              <option value="Coordinator">Coordinator</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Status</label>
+            <select id="modalContactStatus" class="w-full px-3 py-2 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none">
+              <option value="On Duty" selected>On Duty</option>
+              <option value="Available">Available</option>
+              <option value="Off Duty">Off Duty</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Phone Number (PH)</label>
+          <input type="text" id="modalContactPhone" class="w-full px-3 py-2 text-xs font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:outline-none" placeholder="e.g. 0917 123 4567" required>
+          <p class="text-[10px] text-slate-400 mt-1">Accepts 09XX XXX XXXX or +639XX format. Will link directly to phone call & SMS text.</p>
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeContactModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all">Cancel</button>
+          <button type="submit" id="modalSaveBtn" class="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition-all">Save Contact</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -117,10 +236,62 @@
 let currentCourts = parseInt(document.getElementById('courtCountDisplay')?.innerText || '4', 10);
 let autoSaveTimer = null;
 
+function renderCourtDescriptionCards(targetCount) {
+  const grid = document.getElementById('courtDescriptionsGrid');
+  if (!grid) return;
+
+  const defaultNames = {
+    1: 'Main Court',
+    2: 'Air-Con Indoor',
+    3: 'Outdoor Pro',
+    4: 'Training Yard',
+    5: 'Covered Court',
+    6: 'Recreational Court',
+    7: 'East Wing',
+    8: 'West Wing'
+  };
+
+  for (let i = 1; i <= 20; i++) {
+    let card = document.getElementById(`court_card_${i}`);
+    if (i <= targetCount) {
+      if (!card) {
+        card = document.createElement('div');
+        card.id = `court_card_${i}`;
+        card.className = 'court-desc-card bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3.5 hover:border-indigo-300 hover:bg-white transition-all';
+        card.setAttribute('data-court-num', i);
+        const def = defaultNames[i] || `Court ${i}`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-flex items-center font-black text-xs px-2.5 py-0.5 rounded-lg bg-indigo-50 text-indigo-700">C${i}</span>
+            <span class="text-xs font-bold text-slate-700">Court ${i}</span>
+          </div>
+          <label class="block text-[10.5px] font-semibold text-slate-500 mb-1">Sub-label / Type</label>
+          <input type="text"
+                 id="court_desc_${i}"
+                 class="court-desc-input w-full px-3 py-1.5 text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all"
+                 placeholder="e.g. Outdoor / Indoor"
+                 value="${def}"
+                 maxlength="40"
+                 oninput="handleDescInput()">
+        `;
+        grid.appendChild(card);
+      } else {
+        card.style.display = 'block';
+      }
+    } else {
+      if (card) {
+        card.style.display = 'none';
+      }
+    }
+  }
+}
+
 function adjustCourtCount(delta) {
   currentCourts = Math.max(1, Math.min(20, currentCourts + delta));
   const el = document.getElementById('courtCountDisplay');
   if (el) el.innerText = currentCourts;
+
+  renderCourtDescriptionCards(currentCourts);
 
   // Visual status pill
   const status = document.getElementById('autoSaveStatus');
@@ -137,6 +308,28 @@ function adjustCourtCount(delta) {
   }, 200);
 }
 
+function collectCourtDescriptions() {
+  const descriptions = {};
+  for (let i = 1; i <= currentCourts; i++) {
+    const input = document.getElementById(`court_desc_${i}`);
+    descriptions[String(i)] = input ? input.value.trim() || `Court ${i}` : `Court ${i}`;
+  }
+  return descriptions;
+}
+
+function handleDescInput() {
+  const status = document.getElementById('autoSaveStatus');
+  if (status) {
+    status.classList.remove('hidden');
+    status.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5';
+    status.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Saving labels...';
+  }
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    saveCourtCount(true);
+  }, 400);
+}
+
 async function saveCourtCount(isAutoSave = false) {
   const btn = document.getElementById('saveCourtBtn');
   const status = document.getElementById('autoSaveStatus');
@@ -145,11 +338,16 @@ async function saveCourtCount(isAutoSave = false) {
     btn.classList.add('opacity-75');
   }
 
+  const descriptions = collectCourtDescriptions();
+
   try {
     const res = await fetch('/api/settings/courts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ court_count: currentCourts })
+      body: JSON.stringify({
+        court_count: currentCourts,
+        court_descriptions: descriptions
+      })
     });
     const data = await res.json();
     if (data.success) {
@@ -159,14 +357,20 @@ async function saveCourtCount(isAutoSave = false) {
         status.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Synced live to players ✓';
         setTimeout(() => { if (status) status.classList.add('hidden'); }, 3000);
       }
-      if (!isAutoSave) showToast(data.message, 'success');
+      if (!isAutoSave && typeof showToast === 'function') {
+        showToast(data.message, 'success');
+      }
     } else {
       if (status) status.classList.add('hidden');
-      showToast(data.message || 'Failed to update court count.', 'danger');
+      if (typeof showToast === 'function') {
+        showToast(data.message || 'Failed to update courts.', 'danger');
+      }
     }
   } catch (err) {
     if (status) status.classList.add('hidden');
-    if (!isAutoSave) showToast('Network error updating court count.', 'danger');
+    if (!isAutoSave && typeof showToast === 'function') {
+      showToast('Network error updating courts.', 'danger');
+    }
   } finally {
     if (btn && !isAutoSave) {
       btn.disabled = false;
@@ -174,5 +378,217 @@ async function saveCourtCount(isAutoSave = false) {
     }
   }
 }
+
+// ============================================================
+// COURT CREW & INQUIRY CONTACTS MANAGER
+// ============================================================
+let crewContacts = {{ contacts | tojson | safe }} || [];
+
+function formatPhoneNumber(num) {
+  let cleaned = String(num || '').replace(/[^0-9+]/g, '');
+  if (cleaned.startsWith('+63')) {
+    cleaned = '0' + cleaned.slice(3);
+  }
+  if (cleaned.length === 11 && cleaned.startsWith('09')) {
+    return `${cleaned.slice(0, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7)}`;
+  }
+  return num || '';
+}
+
+function normalizeRawPhone(num) {
+  let cleaned = String(num || '').replace(/[^0-9+]/g, '');
+  if (cleaned.startsWith('09')) {
+    return '+63' + cleaned.slice(1);
+  }
+  if (!cleaned.startsWith('+') && cleaned.length > 0) {
+    return '+' + cleaned;
+  }
+  return cleaned;
+}
+
+function renderContacts() {
+  const container = document.getElementById('crewContactsGrid');
+  if (!container) return;
+
+  if (crewContacts.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+        <p class="text-xs font-bold text-slate-500 mb-2">No contact persons added yet.</p>
+        <button onclick="openAddContactModal()" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 underline">Add the first contact person</button>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = crewContacts.map((c, idx) => {
+    const isOwner = (c.role || '').toLowerCase() === 'owner';
+    const roleClass = isOwner ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200';
+    const isOnDuty = (c.status || 'On Duty') === 'On Duty';
+
+    return `
+      <div class="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 hover:border-emerald-300 hover:bg-white transition-all flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-black px-2 py-0.5 rounded-md border ${roleClass}">
+              ${c.role || 'Staff'}
+            </span>
+            <span class="inline-flex items-center gap-1 text-[10.5px] font-semibold ${isOnDuty ? 'text-emerald-600' : 'text-slate-400'}">
+              <span class="w-1.5 h-1.5 rounded-full ${isOnDuty ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}"></span>
+              ${c.status || 'On Duty'}
+            </span>
+          </div>
+
+          <h4 class="text-sm font-bold text-slate-900 mb-0.5">${c.name}</h4>
+          <div class="flex items-center gap-2 text-xs font-mono font-bold text-slate-600 mb-3">
+            <span>${c.phone_display || c.phone}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-3 border-t border-slate-100 gap-2">
+          <div class="flex items-center gap-2">
+            <a href="tel:${c.phone}" class="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition-all" title="Test Call Link">
+              ??
+            </a>
+            <a href="sms:${c.phone}" class="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold transition-all" title="Test SMS Link">
+              ??
+            </a>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="editContact(${idx})" class="px-2.5 py-1 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+              Edit
+            </button>
+            <button onclick="deleteContact(${idx})" class="px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-all">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openAddContactModal() {
+  document.getElementById('contactModalTitle').innerText = 'Add Contact Person';
+  document.getElementById('modalContactId').value = '';
+  document.getElementById('modalContactName').value = '';
+  document.getElementById('modalContactRole').value = 'Staff';
+  document.getElementById('modalContactStatus').value = 'On Duty';
+  document.getElementById('modalContactPhone').value = '';
+  document.getElementById('contactModal').classList.remove('hidden');
+}
+
+function editContact(idx) {
+  const c = crewContacts[idx];
+  if (!c) return;
+  document.getElementById('contactModalTitle').innerText = 'Edit Contact Person';
+  document.getElementById('modalContactId').value = c.id || `crew_${idx + 1}`;
+  document.getElementById('modalContactName').value = c.name || '';
+  document.getElementById('modalContactRole').value = c.role || 'Staff';
+  document.getElementById('modalContactStatus').value = c.status || 'On Duty';
+  document.getElementById('modalContactPhone').value = c.phone_display || c.phone || '';
+  document.getElementById('contactModal').classList.remove('hidden');
+}
+
+function closeContactModal() {
+  document.getElementById('contactModal').classList.add('hidden');
+}
+
+async function handleContactSubmit(e) {
+  e.preventDefault();
+  const idVal = document.getElementById('modalContactId').value.trim();
+  const name = document.getElementById('modalContactName').value.trim();
+  const role = document.getElementById('modalContactRole').value.trim();
+  const status = document.getElementById('modalContactStatus').value.trim();
+  const rawPhone = document.getElementById('modalContactPhone').value.trim();
+
+  if (!name || !rawPhone) {
+    alert('Name and phone number are required.');
+    return;
+  }
+
+  const phoneDisplay = formatPhoneNumber(rawPhone);
+  const phoneRaw = normalizeRawPhone(rawPhone);
+  const roleType = role.toLowerCase() === 'owner' ? 'owner' : 'staff';
+
+  if (idVal) {
+    // Edit existing
+    const idx = crewContacts.findIndex(c => (c.id || '') === idVal);
+    if (idx !== -1) {
+      crewContacts[idx] = {
+        ...crewContacts[idx],
+        name,
+        role,
+        role_type: roleType,
+        status,
+        phone: phoneRaw,
+        phone_display: phoneDisplay
+      };
+    }
+  } else {
+    // New contact
+    crewContacts.push({
+      id: `crew_${Date.now()}`,
+      name,
+      role,
+      role_type: roleType,
+      status,
+      phone: phoneRaw,
+      phone_display: phoneDisplay
+    });
+  }
+
+  closeContactModal();
+  renderContacts();
+  await syncContactsToBackend();
+}
+
+async function deleteContact(idx) {
+  const c = crewContacts[idx];
+  if (!c) return;
+  if (!confirm(`Are you sure you want to remove ${c.name} from the Court Crew?`)) return;
+
+  crewContacts.splice(idx, 1);
+  renderContacts();
+  await syncContactsToBackend();
+}
+
+async function syncContactsToBackend() {
+  const status = document.getElementById('contactSaveStatus');
+  if (status) {
+    status.classList.remove('hidden');
+    status.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5';
+    status.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Saving live to players...';
+  }
+
+  try {
+    const res = await fetch('/api/settings/contacts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contacts: crewContacts })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (status) {
+        status.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5';
+        status.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Synced live to players ?';
+        setTimeout(() => { if (status) status.classList.add('hidden'); }, 3000);
+      }
+      if (typeof showToast === 'function') {
+        showToast(data.message || 'Contacts updated live!', 'success');
+      }
+    } else {
+      if (status) status.classList.add('hidden');
+      alert(data.message || 'Error saving contacts');
+    }
+  } catch (err) {
+    if (status) status.classList.add('hidden');
+    console.error(err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderContacts();
+});
+
 </script>
 {% endblock %}
