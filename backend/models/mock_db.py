@@ -1104,6 +1104,134 @@ class DatabaseManager:
             sqla.session.rollback()
         return False
 
+    def delete_player(self, player_handle: str, admin_name: str = "Admin", soft_delete: bool = False):
+        """
+        Deletes a player by exact handle with safety validation and transactional integrity.
+        Returns (success: bool, payload: dict, status_code: int).
+        """
+        if not player_handle:
+            return False, {"error": "Player handle is required"}, 400
+
+        # Exact match by handle only, never by display name
+        user = User.query.filter_by(handle=player_handle).first()
+        if not user:
+            return False, {"error": "Player not found"}, 404
+
+        # a) Refuse with HTTP 409 if the player is host, official/waitlisted participant in uncompleted session, or in live match
+        try:
+            sessions = OpenPlaySession.query.all()
+            for s in sessions:
+                s_status = (s.status or "").strip().lower()
+                if s_status != "completed":
+                    # Check if player is the host
+                    if s.host_handle and s.host_handle.strip().lower() == player_handle.strip().lower():
+                        return False, {"error": f"Cannot delete player: player is the host of active session '{s.title}' (status: {s.status})"}, 409
+
+                    # Check SessionParticipant
+                    sp = SessionParticipant.query.filter_by(session_id=s.id, player_id=player_handle).first()
+                    if sp:
+                        if (sp.rotation_status or "").lower() in ("playing", "on_court"):
+                            return False, {"error": f"Cannot delete player: player is seated on a court with a match in progress in session '{s.title}'"}, 409
+                        return False, {"error": f"Cannot delete player: player is an active participant in session '{s.title}' (status: {s.status})"}, 409
+
+                    # Check session_data / roster_state JSON
+                    for raw in (s.session_data, s.roster_state):
+                        if raw:
+                            try:
+                                s_dict = json.loads(raw)
+                                if isinstance(s_dict, dict):
+                                    # Check courts for match in progress
+                                    courts_val = s_dict.get("active_courts") or s_dict.get("courts") or []
+                                    if isinstance(courts_val, dict):
+                                        courts_val = list(courts_val.values())
+                                    for c in courts_val:
+                                        if isinstance(c, dict):
+                                            c_players = []
+                                            for pk in ("players", "team_a", "team_b", "team_a_ids", "team_b_ids"):
+                                                val = c.get(pk)
+                                                if isinstance(val, list):
+                                                    c_players.extend(val)
+                                                elif isinstance(val, str):
+                                                    c_players.append(val)
+                                            for cp in c_players:
+                                                c_handle = cp.get("player_id") or cp.get("handle") or cp.get("id") if isinstance(cp, dict) else str(cp)
+                                                if c_handle and str(c_handle).strip().lower() == player_handle.strip().lower():
+                                                    return False, {"error": f"Cannot delete player: player is seated on a court with a match in progress in session '{s.title}'"}, 409
+
+                                    # Check roster / waitlist / requests
+                                    for lk in ("players", "joined_players", "waitlist", "waiting_players", "requests", "rotation_queue"):
+                                        p_list = s_dict.get(lk) or []
+                                        for p in p_list:
+                                            p_handle = p.get("player_id") or p.get("handle") or p.get("id") if isinstance(p, dict) else str(p)
+                                            if p_handle and str(p_handle).strip().lower() == player_handle.strip().lower():
+                                                return False, {"error": f"Cannot delete player: player is on the roster or waitlist of session '{s.title}' (status: {s.status})"}, 409
+                            except Exception:
+                                pass
+        except Exception as e:
+            logger.error(f"Error checking open sessions: {e}")
+
+        # d) Run everything in one transaction with rollback on any error
+        counts = {
+            "users": 0,
+            "xp_history": 0,
+            "ranked_match_reports": 0,
+            "notifications": 0,
+            "player_ratings": 0
+        }
+        try:
+            # b) Delete player_ratings (ratings player GAVE and ratings player RECEIVED)
+            pr_deleted = PlayerRating.query.filter(
+                (PlayerRating.rater_id == player_handle) | (PlayerRating.rated_player_id == player_handle)
+            ).delete(synchronize_session=False)
+            counts["player_ratings"] = pr_deleted
+
+            from sqlalchemy import inspect, text
+            tables = inspect(sqla.engine).get_table_names()
+
+            # xp_history (user_handle)
+            if "xp_history" in tables:
+                res = sqla.session.execute(text("DELETE FROM xp_history WHERE user_handle = :h"), {"h": player_handle})
+                counts["xp_history"] = res.rowcount if res.rowcount is not None and res.rowcount >= 0 else 0
+
+            # ranked_match_reports (player_handle)
+            if "ranked_match_reports" in tables:
+                res = sqla.session.execute(text("DELETE FROM ranked_match_reports WHERE player_handle = :h"), {"h": player_handle})
+                counts["ranked_match_reports"] = res.rowcount if res.rowcount is not None and res.rowcount >= 0 else 0
+
+            # notifications (recipient_handle)
+            if "notifications" in tables:
+                res = sqla.session.execute(text("DELETE FROM notifications WHERE recipient_handle = :h"), {"h": player_handle})
+                counts["notifications"] = res.rowcount if res.rowcount is not None and res.rowcount >= 0 else 0
+
+            # SessionParticipant for completed/historic sessions
+            if "session_participants" in tables:
+                SessionParticipant.query.filter_by(player_id=player_handle).delete(synchronize_session=False)
+
+            # c) NEVER delete match_history rows. Leave open_play_sessions.session_data untouched.
+
+            # 3. Optional soft delete
+            if soft_delete:
+                user.status = "Deleted"
+                counts["users"] = 1
+            else:
+                sqla.session.delete(user)
+                counts["users"] = 1
+
+            # e) Write an audit log entry (admin name, action "delete_player", the handle, time)
+            audit = AuditLog(
+                action=f"delete_player: {player_handle}",
+                admin=admin_name,
+                timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            sqla.session.add(audit)
+
+            sqla.session.commit()
+            return True, counts, 200
+        except Exception as e:
+            sqla.session.rollback()
+            logger.error(f"Error in delete_player for {player_handle}: {e}")
+            return False, {"error": f"Failed to delete player: {str(e)}"}, 500
+
     # --------------------------------------------------------------------------
     # METRICS & AUDIT LOGS
     # --------------------------------------------------------------------------
