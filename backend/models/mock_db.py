@@ -912,8 +912,7 @@ class DatabaseManager:
     """
     def __init__(self):
         self.time_slots = ["08:00 AM", "10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"]
-        self.total_courts = 6
-        self.courts = [f"Court {i}" for i in range(1, 7)]
+        self._total_courts = 6
         self.venues = [
             {"id": 1, "name": "Butuan Ground Zero Pickleball Yard", "courts": self.total_courts, "rate": "300 PHP/hr", "active": True},
             {"id": 2, "name": "PickleYard Butuan Arena", "courts": 4, "rate": "250 PHP/hr", "active": False},
@@ -1441,6 +1440,34 @@ class DatabaseManager:
         self.add_audit_log(f"Updated court crew contact list ({len(contacts)} contacts)", admin)
         return True
 
+    @property
+    def total_courts(self) -> int:
+        try:
+            setting = PlatformSetting.query.get('total_courts')
+            if setting and setting.value is not None:
+                val = int(str(setting.value).strip())
+                return max(1, min(20, val))
+        except Exception:
+            pass
+        return getattr(self, '_total_courts', 6)
+
+    @total_courts.setter
+    def total_courts(self, value):
+        try:
+            self._total_courts = max(1, min(20, int(value)))
+        except (ValueError, TypeError):
+            self._total_courts = 6
+        if hasattr(self, 'venues') and self.venues:
+            self.venues[0]["courts"] = self._total_courts
+
+    @property
+    def courts(self) -> list:
+        return [f"Court {i}" for i in range(1, self.total_courts + 1)]
+
+    @courts.setter
+    def courts(self, value):
+        pass
+
     def get_court_descriptions(self) -> Dict[str, str]:
         """Returns map of court number (e.g. '1', '2') to custom description."""
         try:
@@ -1485,8 +1512,7 @@ class DatabaseManager:
         except (ValueError, TypeError):
             count = 6
 
-        self.total_courts = count
-        self.courts = [f"Court {i}" for i in range(1, count + 1)]
+        self._total_courts = count
         if self.venues:
             self.venues[0]["courts"] = count
 

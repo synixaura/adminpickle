@@ -29,15 +29,14 @@ def update_courts():
 
     admin_name = getattr(current_user, 'name', 'Admin')
 
-    new_count = db.total_courts
     if court_count is not None:
-        _, new_count = db.set_total_courts(court_count, admin_name, descriptions=court_descriptions)
+        db.set_total_courts(court_count, admin_name, descriptions=court_descriptions)
     elif court_descriptions is not None:
         db.set_court_descriptions(court_descriptions, admin=admin_name)
 
     return jsonify({
         "success": True,
-        "court_count": new_count,
+        "court_count": db.total_courts,
         "court_descriptions": db.get_court_descriptions(),
         "message": f"Venue courts and descriptions successfully updated."
     })
