@@ -16,27 +16,4 @@ def users_list():
 @login_required
 @limiter.limit("30 per minute")
 def player_action(player_id):
-    data = request.get_json() or {}
-    action = data.get('action')
-
-    if action == 'freeze':
-        db.update_player_status(player_id, 'Frozen')
-        db.add_audit_log(f"Froze account for player {player_id}", current_user.name)
-        return jsonify({"success": True, "status": "Frozen", "message": f"Account {player_id} has been frozen."})
-
-    elif action == 'ban':
-        db.update_player_status(player_id, 'Banned')
-        db.add_audit_log(f"Banned account for player {player_id}", current_user.name)
-        return jsonify({"success": True, "status": "Banned", "message": f"Account {player_id} has been banned."})
-
-    elif action == 'unban' or action == 'activate':
-        db.update_player_status(player_id, 'Active')
-        db.add_audit_log(f"Activated account for player {player_id}", current_user.name)
-        return jsonify({"success": True, "status": "Active", "message": f"Account {player_id} is now Active."})
-
-    elif action == 'reset_rating':
-        db.reset_player_rating(player_id, 0)
-        db.add_audit_log(f"Reset Elo rating to 0 for player {player_id}", current_user.name)
-        return jsonify({"success": True, "elo": 0, "message": f"Elo rating for {player_id} reset to 0."})
-
-    return jsonify({"success": False, "message": "Invalid action requested."}), 400
+    return jsonify({"success": False, "message": "Action no longer supported"}), 400

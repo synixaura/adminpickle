@@ -75,9 +75,8 @@
             <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider">
               <th class="py-3 px-3">User ID / Handle</th>
               <th class="py-3 px-3">Player Name</th>
-              <th class="py-3 px-3">Elo Rating</th>
               <th class="py-3 px-3">Competitive Rank</th>
-              <th class="py-3 px-3">Skill / DUPR</th>
+              <th class="py-3 px-3">Skill Tier</th>
               <th class="py-3 px-3">Match Rate</th>
               <th class="py-3 px-3 text-right">Status</th>
             </tr>
@@ -97,19 +96,17 @@
                 data-tier-pct="{{ player.tier_progress_pct }}"
                 data-skill-level="{{ player.skill_level }}"
                 data-skill-tier="{{ player.skill_tier }}"
+                data-self-reported-skill="{{ player.self_reported_skill or player.skill_level or 'Beginner' }}"
                 data-dupr-rating="{{ player.dupr_rating if player.dupr_rating is not none else '' }}"
                 data-dupr-verified="{{ 'true' if player.dupr_verified else 'false' }}"
                 data-dupr-id="{{ player.dupr_id or '' }}"
                 data-status="{{ player.status }}"
-                data-elo="{{ player.elo }}"
                 data-win-rate="{{ player.win_rate }}"
                 data-matches="{{ player.matches }}"
-                data-notes="{{ player.notes | default('') }}"
                 onclick="handleRowClick(this)"
                 class="player-row cursor-pointer hover:bg-slate-50 transition-all">
               <td class="py-3.5 px-3 font-mono font-bold text-slate-900">{{ player.id }}</td>
               <td class="py-3.5 px-3 font-bold text-indigo-600 hover:text-indigo-800">{{ player.name }}</td>
-              <td id="elo-{{ player.id }}" class="py-3.5 px-3 text-slate-800 font-semibold">{{ player.elo }}</td>
               <td class="py-3.5 px-3">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
                       style="background-color: {{ player.tier_color }}18; color: {{ player.tier_color }}; border-color: {{ player.tier_color }}40;">
@@ -122,14 +119,11 @@
                   <span class="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px]">
                     <svg class="w-2.5 h-2.5 inline" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
                     {{ "%.2f"|format(player.dupr_rating) }} DUPR
-                  </span>
-                {% elif player.dupr_rating %}
-                  <span class="inline-flex items-center text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">
-                    {{ "%.2f"|format(player.dupr_rating) }} DUPR
+                    <span class="text-[9px] font-semibold text-emerald-600 ml-0.5">(verified)</span>
                   </span>
                 {% else %}
                   <span class="inline-flex items-center text-slate-600 font-medium bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full text-[10px]">
-                    {{ player.skill_level or player.self_reported_skill or 'Beginner' }}
+                    {{ player.self_reported_skill or player.skill_level or 'Beginner' }}
                   </span>
                 {% endif %}
               </td>
@@ -145,7 +139,7 @@
             </tr>
             {% else %}
             <tr id="emptyPlayersRow">
-              <td colspan="7" class="py-8 text-center text-slate-400">
+              <td colspan="6" class="py-8 text-center text-slate-400">
                 <p class="font-semibold text-sm text-slate-600">No players registered yet</p>
                 <p class="text-xs text-slate-400 mt-1">Player accounts created via the mobile app will automatically appear here.</p>
               </td>
@@ -198,16 +192,10 @@
           </div>
         </div>
 
-        <!-- Skill & DUPR Level -->
+        <!-- Skill Tier -->
         <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between">
-          <span class="text-slate-500 font-medium">Skill / DUPR Level</span>
+          <span class="text-slate-500 font-medium">Skill Tier</span>
           <span id="inspSkill" class="font-bold text-slate-800 text-right">-</span>
-        </div>
-
-        <!-- Elo Rating -->
-        <div class="flex items-center justify-between">
-          <span class="text-slate-500 font-medium">Elo Rating</span>
-          <span id="inspElo" class="font-bold text-slate-900 text-sm">-</span>
         </div>
 
         <!-- Win / Match Rate -->
@@ -221,43 +209,6 @@
           <span class="text-slate-500 font-medium">Total Matches Played</span>
           <span id="inspMatches" class="font-bold text-slate-800">-</span>
         </div>
-      </div>
-
-      <!-- Admin Notes -->
-      <div class="space-y-1">
-        <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Admin Operational Notes</label>
-        <p id="inspNotes" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200/50 italic">
-          Select a player from the directory to inspect account details and perform administrative moderation actions.
-        </p>
-      </div>
-    </div>
-
-    <!-- Administrative Action Buttons -->
-    <div class="space-y-2.5 pt-4 border-t border-slate-100">
-      <div class="grid grid-cols-2 gap-2">
-        <button type="button" 
-                onclick="executePlayerAction('freeze')" 
-                class="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-amber-200 transition-colors shadow-xs active:scale-95">
-          Freeze Account
-        </button>
-        <button type="button" 
-                onclick="executePlayerAction('reset_rating')" 
-                class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 px-3 rounded-xl text-xs border border-slate-300 transition-colors shadow-xs active:scale-95">
-          Reset Rating (0)
-        </button>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2">
-        <button type="button" 
-                onclick="executePlayerAction('ban')" 
-                class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow-md shadow-rose-200 transition-colors active:scale-95">
-          Ban Account
-        </button>
-        <button type="button" 
-                onclick="executePlayerAction('activate')" 
-                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow-md shadow-emerald-200 transition-colors active:scale-95">
-          Activate / Unban
-        </button>
       </div>
     </div>
   </div>
@@ -273,7 +224,6 @@
     const player = {
       id: rowElement.getAttribute('data-id'),
       name: rowElement.getAttribute('data-name'),
-      elo: rowElement.getAttribute('data-elo'),
       rank: rowElement.getAttribute('data-rank'),
       rank_short: rowElement.getAttribute('data-rank-short'),
       tier_icon: rowElement.getAttribute('data-tier-icon'),
@@ -284,13 +234,13 @@
       tier_pct: rowElement.getAttribute('data-tier-pct'),
       skill_level: rowElement.getAttribute('data-skill-level'),
       skill_tier: rowElement.getAttribute('data-skill-tier'),
+      self_reported_skill: rowElement.getAttribute('data-self-reported-skill'),
       dupr_rating: rowElement.getAttribute('data-dupr-rating'),
       dupr_verified: rowElement.getAttribute('data-dupr-verified') === 'true',
       dupr_id: rowElement.getAttribute('data-dupr-id'),
       win_rate: rowElement.getAttribute('data-win-rate'),
       matches: rowElement.getAttribute('data-matches'),
-      status: rowElement.getAttribute('data-status'),
-      notes: rowElement.getAttribute('data-notes')
+      status: rowElement.getAttribute('data-status')
     };
     updateInspector(player, rowElement);
   }
@@ -302,7 +252,6 @@
     // Populate Inspector Fields
     document.getElementById('inspPlayerId').innerText = player.id;
     document.getElementById('inspPlayerName').innerText = player.name || player.id;
-    document.getElementById('inspElo').innerText = player.elo || '0';
     
     // Competitive Rank with Icon & Color
     const inspRankElem = document.getElementById('inspRank');
@@ -331,20 +280,17 @@
       }
     }
 
-    // Skill & DUPR Display
+    // Skill Tier Display
     const inspSkillElem = document.getElementById('inspSkill');
     if (player.dupr_verified && player.dupr_rating) {
-      inspSkillElem.innerHTML = `<span class="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">✓ ${parseFloat(player.dupr_rating).toFixed(2)} DUPR (Verified)</span>`;
-    } else if (player.dupr_rating) {
-      inspSkillElem.innerHTML = `<span class="text-slate-700 font-semibold bg-slate-100 px-2 py-0.5 rounded-full">${parseFloat(player.dupr_rating).toFixed(2)} DUPR (Unverified)</span>`;
+      inspSkillElem.innerHTML = `<span class="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-xs">✓ ${parseFloat(player.dupr_rating).toFixed(2)} DUPR <span class="text-[9px] font-semibold text-emerald-600">(DUPR verified)</span></span>`;
     } else {
-      inspSkillElem.innerHTML = `<span class="text-slate-700 font-semibold">${player.skill_level || 'Beginner'}</span>`;
+      inspSkillElem.innerHTML = `<span class="text-slate-700 font-semibold">${player.self_reported_skill || player.skill_level || 'Beginner'}</span>`;
     }
 
     document.getElementById('inspWinRate').innerText = player.win_rate || '0%';
     document.getElementById('inspMatches').innerText = player.matches || '0';
     document.getElementById('inspStatus').innerText = player.status || 'Active';
-    document.getElementById('inspNotes').innerText = player.notes || 'No administrative flags recorded for this player.';
 
     const avatarLetter = document.getElementById('inspAvatarLetter');
     if (avatarLetter && player.name) {
@@ -415,70 +361,6 @@
     const countLabel = document.getElementById('playerCountLabel');
     if (countLabel) {
       countLabel.innerText = `Showing ${visibleCount} player${visibleCount !== 1 ? 's' : ''}`;
-    }
-  }
-
-  // Admin Action Handler (Freeze, Ban, Reset Rating, Activate)
-  async function executePlayerAction(action) {
-    if (!currentlySelectedPlayerId) {
-      alert('Please click on a player in the table first.');
-      return;
-    }
-
-    const playerId = currentlySelectedPlayerId;
-    try {
-      const response = await fetch(`/api/users/${encodeURIComponent(playerId)}/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: action })
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        // Show success alert
-        alert(result.message || 'Action completed successfully!');
-
-        // Update status in Inspector and Table
-        if (result.status) {
-          const statusBadge = document.getElementById('inspStatus');
-          statusBadge.innerText = result.status;
-          if (result.status === 'Active') {
-            statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
-          } else if (result.status === 'Frozen') {
-            statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800';
-          } else {
-            statusBadge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800';
-          }
-
-          // Update Table Row
-          const rowStatus = document.getElementById(`status-${playerId}`);
-          const rowElem = document.getElementById(`row-${playerId}`);
-          if (rowStatus) {
-            rowStatus.innerText = result.status;
-            rowStatus.className = 'px-2.5 py-1 rounded-full text-xs font-semibold ' + (
-              result.status === 'Active' ? 'bg-emerald-100 text-emerald-800' :
-              result.status === 'Frozen' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
-            );
-          }
-          if (rowElem) {
-            rowElem.setAttribute('data-status', result.status);
-          }
-        }
-
-        // Update Elo Rating
-        if (result.elo !== undefined) {
-          document.getElementById('inspElo').innerText = result.elo;
-          const rowElo = document.getElementById(`elo-${playerId}`);
-          const rowElem = document.getElementById(`row-${playerId}`);
-          if (rowElo) rowElo.innerText = result.elo;
-          if (rowElem) rowElem.setAttribute('data-elo', result.elo);
-        }
-      } else {
-        alert(result.message || 'Failed to perform player action.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Network error communicating with server.');
     }
   }
 

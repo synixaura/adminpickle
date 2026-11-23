@@ -28,6 +28,14 @@ def create_app():
     app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
     app.config.from_object(Config)
 
+    # Session cookie hardening
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    if not (app.config.get('TESTING') or os.environ.get('TESTING') == '1'):
+        app.config['SESSION_COOKIE_SECURE'] = True
+    else:
+        app.config['SESSION_COOKIE_SECURE'] = False
+
     # Configure SQLAlchemy Engine options for Serverless / Supabase connection pooling
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
     if 'postgresql' in db_uri:
@@ -145,12 +153,10 @@ def create_app():
     @app.after_request
     def set_security_headers(response):
         """Inject enterprise-grade HTTP security headers on all responses."""
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['Permissions-Policy'] = 'geolocation=(), camera=(), microphone=()'
-        if app.config.get('IS_PRODUCTION'):
-            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
         return response
 
     @app.teardown_request
