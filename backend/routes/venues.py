@@ -65,11 +65,14 @@ def save_booking():
     rent_paddle = data.get('rent_paddle', False)
     paddle_count = data.get('paddle_count', 0)
     duration_hours = data.get('duration_hours', 1)
+    booking_id = data.get('booking_id')
 
     if not date or not court or not time_slot or not customer_name:
-        return jsonify({"success": False, "message": "Date, Court, Time Slot, and Customer Name are required."})
+        return jsonify({"success": False, "message": "Date, Court, Time Slot, and Customer Name are required."}), 400
 
-    success, msg = db.save_direct_booking(
+    admin_name = getattr(current_user, 'name', 'Karl Alegrado')
+
+    result = db.save_direct_booking(
         date=date,
         court=court,
         time_slot=time_slot,
@@ -79,9 +82,18 @@ def save_booking():
         paddle_count=paddle_count,
         duration_hours=duration_hours,
         payment_method=payment_method,
-        amount_paid=amount_paid
+        amount_paid=amount_paid,
+        booking_id=booking_id,
+        admin=admin_name
     )
-    return jsonify({"success": success, "message": msg})
+
+    if len(result) == 3:
+        success, msg, status_code = result
+    else:
+        success, msg = result
+        status_code = 200 if success else 400
+
+    return jsonify({"success": success, "message": msg}), status_code
 
 
 @venues_bp.route('/api/booking-sheet/clear', methods=['POST'])

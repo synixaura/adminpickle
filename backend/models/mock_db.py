@@ -1294,8 +1294,14 @@ class DatabaseManager:
             log_entry = AuditLog(action=action, admin=admin)
             sqla.session.add(log_entry)
             sqla.session.commit()
-        except Exception:
-            sqla.session.rollback()
+            return True
+        except Exception as e:
+            try:
+                sqla.session.rollback()
+            except Exception:
+                pass
+            logger.warning(f"Audit log write failed: {e}")
+            return False
 
     # --------------------------------------------------------------------------
     # MODERATION & REPORTS
@@ -1448,7 +1454,10 @@ class DatabaseManager:
                 val = int(str(setting.value).strip())
                 return max(1, min(20, val))
         except Exception:
-            pass
+            try:
+                sqla.session.rollback()
+            except Exception:
+                pass
         return getattr(self, '_total_courts', 6)
 
     @total_courts.setter
@@ -1477,7 +1486,10 @@ class DatabaseManager:
                 if isinstance(parsed, dict):
                     return parsed
         except Exception:
-            pass
+            try:
+                sqla.session.rollback()
+            except Exception:
+                pass
         return getattr(self, '_court_descriptions', {
             "1": "Main Court",
             "2": "Air-Con Indoor",
@@ -1625,6 +1637,10 @@ class DatabaseManager:
 # RANKED & SKILL LEVEL ENGINE (100% Parity with Pickle-Legends)
 # ---------------------------------------------------------------------------
         except Exception as e:
+            try:
+                sqla.session.rollback()
+            except Exception:
+                pass
             print(f"[!] Error building booking matrix: {e}")
 
         return {
@@ -1646,7 +1662,7 @@ class DatabaseManager:
             grid[slot] = sheet_data["matrix"][slot].get(court, {"status": "vacant"})
         return grid
 
-    def save_direct_booking(self, date, court, time_slot, customer_name, payment_status="paid", rent_paddle=False, paddle_count=0, duration_hours=1, payment_method="Cash", amount_paid=None):
+    def save_direct_booking(self, date, court, time_slot, customer_name, payment_status="paid", rent_paddle=False, paddle_count=0, duration_hours=1, payment_method="Cash", amount_paid=None, booking_id=None, admin="Karl Alegrado"):
         try:
             norm_date = normalize_date_str(date)
             norm_time = normalize_time_slot(time_slot)
@@ -1663,7 +1679,7 @@ class DatabaseManager:
             else:
                 final_amount = 300.0 * dur_int + (50.0 * int(paddle_count) if rent_paddle else 0.0)
 
-            # Check for conflicts
+            # Check for Open Play conflicts
             matrix_data = self.get_booking_sheet_matrix(date)
             if norm_time in BOOKING_TIME_SLOTS:
                 start_idx = BOOKING_TIME_SLOTS.index(norm_time)
@@ -1672,44 +1688,90 @@ class DatabaseManager:
                         chk_slot = BOOKING_TIME_SLOTS[start_idx + h]
                         cell = matrix_data["matrix"][chk_slot].get(court, {})
                         if cell.get("status") == "open_play":
-                            return False, f"Cannot book: {court} at {chk_slot} is reserved for Open Play ({cell.get('title')})."
-                        elif cell.get("status") == "booked" and cell.get("start_time_slot") != norm_time:
-                            return False, f"Cannot book: {court} at {chk_slot} is already booked by {cell.get('customer_name')}."
+                            return False, f"Cannot book: {court} at {chk_slot} is reserved for Open Play ({cell.get('title')}).", 409
 
-            # Delete any existing booking starting at this slot to support editing/updating
-            existing = ConfirmedBooking.query.all()
-            for eb in existing:
+            # Check for duplicate bookings or find existing booking to edit by id
+            c_target = court.split(" (")[0].strip() if "(" in (court or "") else (court or "").strip()
+            existing_bookings = ConfirmedBooking.query.all()
+            target_booking = None
+
+            for eb in existing_bookings:
+                eb_status = (eb.status or "").strip().lower()
+                if eb_status == "cancelled":
+                    continue
                 if normalize_date_str(eb.date) == norm_date:
                     c_clean = eb.court_no.split(" (")[0].strip() if "(" in (eb.court_no or "") else (eb.court_no or "").strip()
-                    if c_clean == court and normalize_time_slot(eb.time) == norm_time:
-                        sqla.session.delete(eb)
-                        sqla.session.flush()
-                        break
+                    if c_clean == c_target and normalize_time_slot(eb.time) == norm_time:
+                        if booking_id and str(eb.id).strip() == str(booking_id).strip():
+                            target_booking = eb
+                        else:
+                            return False, f"Court '{court}' is already booked at {norm_time} on {norm_date}.", 409
 
-            b_id = f"BK-{int(time.time() * 1000) % 10000}"
-            booking = ConfirmedBooking(
-                id=b_id,
-                court="Butuan Ground Zero Pickleball Yard",
-                court_no=court,
-                customer_name=customer_name.strip(),
-                date=norm_date,
-                time=norm_time,
-                duration=f"{dur_int} hr{'s' if dur_int > 1 else ''}",
-                amount_paid=final_amount,
-                payment_method=pay_method,
-                staff_name="Karl Alegrado",
-                status="Confirmed" if pay_status == "paid" else "Unpaid",
-                flow_type="direct",
-                rent_paddle=bool(rent_paddle),
-                paddle_count=int(paddle_count) if rent_paddle else 0
-            )
-            sqla.session.add(booking)
-            sqla.session.commit()
-            self.add_audit_log(f"Saved confirmed booking {b_id} for '{customer_name}' on {court} at {norm_time} ({pay_method} • ₱{final_amount:,.2f})")
-            return True, f"Booking for '{customer_name}' on {court} saved successfully!"
+            if booking_id and not target_booking:
+                target_booking = ConfirmedBooking.query.get(booking_id)
+
+            if target_booking:
+                # Update existing booking in place (preserves id and history)
+                target_booking.court = "Butuan Ground Zero Pickleball Yard"
+                target_booking.court_no = court
+                target_booking.customer_name = customer_name.strip()
+                target_booking.date = norm_date
+                target_booking.time = norm_time
+                target_booking.duration = f"{dur_int} hr{'s' if dur_int > 1 else ''}"
+                target_booking.amount_paid = final_amount
+                target_booking.payment_method = pay_method
+                target_booking.staff_name = admin
+                target_booking.status = "Confirmed" if pay_status == "paid" else "Unpaid"
+                target_booking.rent_paddle = bool(rent_paddle)
+                target_booking.paddle_count = int(paddle_count) if rent_paddle else 0
+                sqla.session.commit()
+                b_id = target_booking.id
+                action_desc = "Updated"
+            else:
+                # Create a new booking row
+                b_id = f"BK-{int(time.time() * 1000) % 10000}"
+                booking = ConfirmedBooking(
+                    id=b_id,
+                    court="Butuan Ground Zero Pickleball Yard",
+                    court_no=court,
+                    customer_name=customer_name.strip(),
+                    date=norm_date,
+                    time=norm_time,
+                    duration=f"{dur_int} hr{'s' if dur_int > 1 else ''}",
+                    amount_paid=final_amount,
+                    payment_method=pay_method,
+                    staff_name=admin,
+                    status="Confirmed" if pay_status == "paid" else "Unpaid",
+                    flow_type="direct",
+                    rent_paddle=bool(rent_paddle),
+                    paddle_count=int(paddle_count) if rent_paddle else 0
+                )
+                sqla.session.add(booking)
+                sqla.session.commit()
+                action_desc = "Saved"
+
+            # Failure-safe audit log: if audit log fails, roll back only that write,
+            # never abort or roll back the booking that was already committed.
+            try:
+                self.add_audit_log(
+                    f"{action_desc} confirmed booking {b_id} for '{customer_name}' on {court} at {norm_time} ({pay_method} • ₱{final_amount:,.2f})",
+                    admin=admin
+                )
+            except Exception as audit_err:
+                try:
+                    sqla.session.rollback()
+                except Exception:
+                    pass
+                logger.warning(f"Audit log write failed for booking {b_id}: {audit_err}")
+
+            return True, f"Booking for '{customer_name}' on {court} {action_desc.lower()} successfully!", 200
         except Exception as e:
-            sqla.session.rollback()
-            return False, f"Failed to save booking: {str(e)}"
+            try:
+                sqla.session.rollback()
+            except Exception:
+                pass
+            clean_err = str(e).split('\n')[0].strip()
+            return False, f"Failed to save booking: {clean_err}", 500
 
     def clear_direct_booking(self, date, court, time_slot):
         try:
@@ -1732,8 +1794,12 @@ class DatabaseManager:
                 return True, f"Booking for '{c_name}' cleared."
             return False, "No active booking found for this slot."
         except Exception as e:
-            sqla.session.rollback()
-            return False, f"Failed to clear booking: {str(e)}"
+            try:
+                sqla.session.rollback()
+            except Exception:
+                pass
+            clean_err = str(e).split('\n')[0].strip()
+            return False, f"Failed to clear booking: {clean_err}", 500
 
     # --------------------------------------------------------------------------
     # OPEN PLAY SESSIONS & FAIR ROTATIONS
