@@ -259,7 +259,6 @@ class User(sqla.Model):
     contact = sqla.Column(sqla.String(50), nullable=True)
     bio = sqla.Column(sqla.Text, nullable=True)
     preferred_court = sqla.Column(sqla.String(150), default="Butuan Ground Zero Pickleball Yard")
-    play_style = sqla.Column(sqla.String(100), default="Aggressive Kitchen Play")
     member_since = sqla.Column(sqla.String(50), default="July 2026")
     rank = sqla.Column(sqla.String(100), default="Bronze IV")
     rank_short = sqla.Column(sqla.String(50), default="Bronze")
@@ -283,7 +282,7 @@ class User(sqla.Model):
     created_at = sqla.Column(sqla.DateTime, default=datetime.now)
 
     def __init__(self, handle, name, email=None, contact="", bio="", preferred_court="Butuan Ground Zero Pickleball Yard",
-                 play_style="Aggressive Kitchen Play", member_since="July 2026", rank=None,
+                 member_since="July 2026", rank=None,
                  rank_short=None, avatar=None, initials=None, elo=0, xp=0, max_xp=1000,
                  wins=0, losses=0, total_games=0, win_rate="0%", dupr_id=None, dupr_rating=None,
                  dupr_verified=False, self_reported_skill="Beginner", status="Active", reports=0, notes="", **kwargs):
@@ -294,7 +293,6 @@ class User(sqla.Model):
         self.contact = contact
         self.bio = bio
         self.preferred_court = preferred_court
-        self.play_style = play_style
         self.member_since = member_since
         self.xp = int(xp) if xp else 0
         computed_rank, _ = get_tier_divisions(self.xp)
@@ -352,7 +350,6 @@ class User(sqla.Model):
             "contact": self.contact,
             "bio": self.bio,
             "preferred_court": self.preferred_court,
-            "play_style": self.play_style,
             "member_since": self.member_since,
             "rank": display_rank,
             "rank_short": tier_meta["name"],
@@ -595,7 +592,6 @@ class SessionParticipant(sqla.Model):
     player_id = sqla.Column(sqla.String(100), nullable=False)  # handle
     player_name = sqla.Column(sqla.String(100), nullable=False)
     initials = sqla.Column(sqla.String(10), default="PL")
-    elo = sqla.Column(sqla.Integer, default=0)
     is_host = sqla.Column(sqla.Boolean, default=False)
     payment_status = sqla.Column(sqla.String(50), default="paid")  # 'paid', 'pending', 'expired'
     payment_method = sqla.Column(sqla.String(50), default="gcash")
@@ -604,7 +600,7 @@ class SessionParticipant(sqla.Model):
     rotation_status = sqla.Column(sqla.String(50), default="waiting")  # 'waiting', 'playing', 'resting'
     joined_at = sqla.Column(sqla.DateTime, default=datetime.now)
 
-    def __init__(self, id, session_id, player_id, player_name, initials=None, elo=0,
+    def __init__(self, id, session_id, player_id, player_name, initials=None,
                  is_host=False, payment_status="paid", payment_method="gcash", receipt=None, **kwargs):
         super().__init__(**kwargs)
         self.id = id
@@ -612,7 +608,6 @@ class SessionParticipant(sqla.Model):
         self.player_id = player_id
         self.player_name = player_name
         self.initials = initials or "".join([w[0].upper() for w in player_name.split()[:2]]) or "PL"
-        self.elo = int(elo) if elo else 0
         self.is_host = bool(is_host)
         self.payment_status = payment_status
         self.payment_method = payment_method
@@ -627,7 +622,6 @@ class SessionParticipant(sqla.Model):
             "player_id": self.player_id,
             "player_name": self.player_name,
             "initials": self.initials,
-            "elo": self.elo,
             "is_host": self.is_host,
             "payment_status": self.payment_status,
             "payment_method": self.payment_method,
